@@ -35,7 +35,7 @@ from .import models
 # -------------------------  ADMIN SIDE ----------------------------- #
 
 from django.http import JsonResponse
-from django.db.models import Count
+from django.db.models import Count,Avg
 from django.db.models.functions import ExtractMonth
 from .models import Booking  # Import your Booking model
 from django.views.decorators.http import require_GET
@@ -106,13 +106,29 @@ def DashboardPage(request):
     for item in monthly_bookings:
         booking_counts[item['month'].month - 1] = item['count']
 
+    # Fetch top-rated workers
+    top_rated_workers = WorkerRating.objects.values('worker').annotate(
+        average_rating=Avg('rating')
+    ).order_by('-average_rating')[:5]  # Get top 5 rated workers
+
+    # Fetch full worker objects for each top-rated worker
+    top_rated_workers_full = []
+    for worker in top_rated_workers:
+        rating_obj = WorkerRating.objects.filter(worker_id=worker['worker']).first()
+        if rating_obj and rating_obj.worker:
+            top_rated_workers_full.append({
+                'worker': rating_obj.worker,
+                'average_rating': worker['average_rating']
+            })
+
     context = {
         'total_users': total_users,
         'total_customers': total_customers,
         'total_workers': total_workers,
         'total_bookings': total_bookings,
         'recent_messages': recent_messages,
-        'monthly_bookings': booking_counts
+        'monthly_bookings': booking_counts,
+        'top_rated_workers': top_rated_workers_full  # Add this line
     }
     
     return render(request, 'admin_temp/dashboard.html', context)
@@ -1241,6 +1257,8 @@ def view_nurses(request):
     }
     return render(request, 'view_nurses.html', context)
 
+
+from django.db.models import Prefetch
 @never_cache
 def view_carpenters(request):
     # Get all unique districts from the Carpenter model
@@ -1254,6 +1272,9 @@ def view_carpenters(request):
         carpenters = Carpenter.objects.filter(district=selected_district)
     else:
         carpenters = Carpenter.objects.all()
+    
+    # Prefetch related Users to optimize database queries
+    carpenters = carpenters.select_related('user_id')
     
     context = {
         'carpenters': carpenters,
@@ -1344,12 +1365,12 @@ def book_service(request, maid_id):
                 customer_id=customer,
                 appointment_date=appointment_date,
                 appointment_time=appointment_start_time,
-                end_time=appointment_end_time,
+                # end_time=appointment_end_time,
                 address=address,
                 status='Pending',
-                service_type=service_type,
+                service_type='house_maid',
                 hours_booked=Decimal(hours_booked),
-                phone=phone,
+                # phone=phone,
                 description=description
             )
             booking.save()
@@ -1637,7 +1658,9 @@ def update_booking_status(request):
         return JsonResponse({'success': True})
     except Booking.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Booking not found'})
-    
+
+
+
 
 from django.http import JsonResponse
 from .models import Booking
@@ -1660,6 +1683,58 @@ def update_worker_booking_status(request):
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
     return JsonResponse({'success': False, 'error': 'Invalid request'})
+
+from .models import WorkerRating
+
+
+
+import logging
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+from .models import WorkerRating, Users, Booking
+
+logger = logging.getLogger(__name__)
+
+@csrf_exempt
+@require_POST
+def submit_rating(request):
+    logger.debug(f"Received POST data: {request.POST}")
+    worker_id = request.POST.get('worker_id')
+    customer_id = request.POST.get('customer_id')
+    rating_value = request.POST.get('rating')
+    comment = request.POST.get('comment')
+
+    logger.debug(f"Parsed data: worker_id={worker_id}, customer_id={customer_id}, rating={rating_value}, comment={comment}")
+
+    if not worker_id or not customer_id:
+        logger.error(f"Worker ID or Customer ID is empty or None. worker_id: {worker_id}, customer_id: {customer_id}")
+        return JsonResponse({'success': False, 'message': 'Worker ID and Customer ID are required'}, status=400)
+
+    try:
+        worker = Users.objects.get(user_id=worker_id)
+        customer = Users.objects.get(user_id=customer_id)
+        logger.debug(f"Found worker: {worker}, customer: {customer}")
+        rating, created = WorkerRating.objects.update_or_create(
+            customer=customer,
+            worker=worker,
+            defaults={
+                'rating': rating_value,
+                'comment': comment
+            }
+        )
+        logger.info(f"Rating {'created' if created else 'updated'} successfully: {rating}")
+        return JsonResponse({'success': True, 'message': 'Rating submitted successfully'})
+    except Users.DoesNotExist as e:
+        logger.error(f"User does not exist: {str(e)}")
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+    except Exception as e:
+        logger.error(f"Error creating/updating rating: {str(e)}")
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+
+
+
 # ------------------WORKER Views----------------------
 
 @never_cache
@@ -1710,6 +1785,13 @@ from django.contrib import messages
 from django.db import IntegrityError
 from .models import Users  # Make sure to import your Users model
 
+from django.db.models import Avg, Count
+from .models import WorkerRating, Users
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.db import IntegrityError
+from django.views.decorators.cache import never_cache
+
 @never_cache
 def worker_profile(request):
     user_id = request.session.get('user_id')
@@ -1744,6 +1826,14 @@ def worker_profile(request):
         # Redirect to the same page to show the updated information
         return redirect('worker_profile')
 
+    # Calculate average rating and total ratings
+    worker_ratings = WorkerRating.objects.filter(worker=user)
+    average_rating = worker_ratings.aggregate(Avg('rating'))['rating__avg']
+    total_ratings = worker_ratings.count()
+
+    if average_rating:
+        average_rating = round(average_rating, 1)  # Round to one decimal place
+
     # Prepare context for both GET and POST (after unsuccessful save) requests
     context = {
         'first_name': user.firstname,
@@ -1753,6 +1843,8 @@ def worker_profile(request):
         'usertype': user.usertype,
         'address': user.address,
         'profile_picture_url': user.image.url if user.image else '/media/default_profile_pic.png',
+        'average_rating': average_rating,
+        'total_ratings': total_ratings,
     }
 
     return render(request, 'worker_temp/worker_profile.html', context)
@@ -1790,6 +1882,63 @@ def view_my_booking(request):
 
     return render(request, 'worker_temp/view_my_booking.html', context)
 
+
+
+
+
+
+
+
+
+
+from django.shortcuts import get_object_or_404
+from django.template.loader import get_template
+from django.http import HttpResponse
+from xhtml2pdf import pisa
+from io import BytesIO
+from .models import Booking
+from num2words import num2words
+from django.utils import timezone
+import random
+
+def download_invoice(request, booking_id):
+    booking = get_object_or_404(Booking, id=booking_id)
+    
+    # Check if the user has permission to download this invoice
+    if booking.customer_id.user_id != request.session.get('user_id'):
+        return HttpResponse("Unauthorized", status=403)
+    
+    # Convert amount to words
+    amount_in_words = num2words(float(booking.pay_amount), lang='en_IN', to='currency', currency='INR')
+    amount_in_words = amount_in_words.replace(',', ' and').capitalize()
+    
+    # Generate a random invoice number
+    invoice_number = f"INV-{random.randint(100000, 999999)}"
+    
+    # Prepare context data for the template
+    context = {
+        'booking': booking,
+        'customer': booking.customer_id,
+        'worker': booking.worker_id,
+        'amount_in_words': amount_in_words,
+        'invoice_date': timezone.now().date(),
+        'invoice_number': invoice_number,  # Add this line
+    }
+    
+    # Get the template
+    template = get_template('invoice_template.html')
+    html = template.render(context)
+    
+    # Create a PDF
+    result = BytesIO()
+    pdf = pisa.pisaDocument(BytesIO(html.encode("UTF-8")), result)
+    
+    if not pdf.err:
+        response = HttpResponse(result.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="invoice_{invoice_number}.pdf"'
+        return response
+    
+    return HttpResponse('Error generating PDF', status=400)
 
 
 
@@ -2009,6 +2158,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 def create_payment(request, booking_id):
+    print(f"Create payment view called with booking ID: {booking_id}")
     logger.debug(f"create_payment called with booking_id: {booking_id}")
     
     try:
@@ -2047,6 +2197,9 @@ def create_payment(request, booking_id):
     except ServiceRate.DoesNotExist:
         logger.error(f"ServiceRate does not exist for service type: {booking.service_type}")
         messages.error(request, 'Service rate not found for the specified service type.')
+    except razorpay.errors.BadRequestError as e:
+        logger.error(f"Razorpay BadRequestError: {str(e)}")
+        messages.error(request, 'An error occurred while creating the payment order.')
     except Exception as e:
         logger.error(f"Error in create_payment: {str(e)}")
         messages.error(request, 'An error occurred while creating the payment.')
@@ -2156,8 +2309,7 @@ from .models import WorkerVerification, Users
 def is_admin(user):
     return user.is_authenticated and user.is_staff
 
-@login_required
-@user_passes_test(is_admin)
+
 def view_verification(request):
     # Fetch all worker verifications, ordered by submission date
     verifications = WorkerVerification.objects.all().order_by('-submitted_at')
@@ -2167,3 +2319,192 @@ def view_verification(request):
     }
 
     return render(request, 'admin_temp/worker_verification.html', context)
+
+
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import render
+from .models import Users, Booking, WorkerRating, Payments  # Import your models
+import json
+
+@csrf_exempt
+def generate_report(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            report_type = data.get('reportType')
+            filters = data.get('filters', {})
+
+            logger.info(f"Generating report for type: {report_type} with filters: {filters}")
+
+            results = []
+
+            if report_type == 'users':
+                queryset = Users.objects.all()
+                
+                if filters.get('userType'):
+                    user_type = filters['userType']
+                    if user_type == 'worker':
+                        queryset = queryset.filter(usertype__in=['house_maid', 'home_nurse', 'carpenter', 'electrician', 'plumber'])
+                    else:
+                        queryset = queryset.filter(usertype=user_type)
+                
+                if filters.get('userStatus'):
+                    queryset = queryset.filter(active=(filters['userStatus'] == 'active'))
+
+                results = list(queryset.values('user_id', 'firstname', 'lastname', 'email', 'usertype', 'active', 'district', 'phone'))
+
+                # If worker types are selected, add worker-specific information
+                if filters.get('userType') == 'worker':
+                    worker_types = {
+                        'house_maid': House_Maid.objects.all().values('user_id', 'experience'),
+                        'home_nurse': Home_Nurse.objects.all().values('user_id', 'experience'),
+                        'carpenter': Carpenter.objects.all().values('user_id', 'experience'),
+                        'electrician': Electrician.objects.all().values('user_id', 'experience'),
+                        'plumber': Plumber.objects.all().values('user_id', 'experience'),
+                    }
+
+                    worker_type_dict = {}
+                    for worker_type, workers in worker_types.items():
+                        for worker in workers:
+                            worker_type_dict[worker['user_id']] = {
+                                'worker_type': worker_type,
+                                'experience': worker['experience']
+                            }
+
+                    verifications = WorkerVerification.objects.filter(worker_id__in=[r['user_id'] for r in results])
+                    verification_dict = {v.worker_id: v.verification_status for v in verifications}
+
+                    for result in results:
+                        worker_info = worker_type_dict.get(result['user_id'], {})
+                        result['worker_type'] = worker_info.get('worker_type', result['usertype'])
+                        result['experience'] = worker_info.get('experience', 'N/A')
+                        result['verification_status'] = verification_dict.get(result['user_id'], 'Not submitted')
+
+            elif report_type == 'bookings':
+                queryset = Booking.objects.all()
+                if filters.get('bookingStatus'):
+                    queryset = queryset.filter(status=filters['bookingStatus'])
+                if filters.get('serviceType'):
+                    queryset = queryset.filter(worker_type=filters['serviceType'])
+                if filters.get('dateFrom'):
+                    queryset = queryset.filter(appointment_date__gte=filters['dateFrom'])
+                if filters.get('dateTo'):
+                    queryset = queryset.filter(appointment_date__lte=filters['dateTo'])
+
+                results = list(queryset.values(
+                    'id', 'worker_id__firstname', 'customer_id__firstname', 
+                    'worker_type', 'status', 'appointment_date', 'pay_amount'
+                ))
+
+            elif report_type == 'workers':
+                worker_type = filters.get('workerType')
+                
+                if worker_type:
+                    queryset = Users.objects.filter(usertype=worker_type)
+                else:
+                    queryset = Users.objects.filter(usertype__in=['house_maid', 'home_nurse', 'carpenter', 'electrician', 'plumber'])
+                
+                # Fetch all worker types
+                worker_models = {
+                    'house_maid': House_Maid,
+                    'home_nurse': Home_Nurse,
+                    'carpenter': Carpenter,
+                    'electrician': Electrician,
+                    'plumber': Plumber,
+                }
+
+                worker_types = {}
+                for wt, model in worker_models.items():
+                    worker_types[wt] = {w['user_id']: w['experience'] for w in model.objects.all().values('user_id', 'experience')}
+
+                results = list(queryset.values(
+                    'user_id', 'firstname', 'lastname', 'email', 'phone', 'district', 'availability', 'usertype'
+                ))
+
+                # Add worker type and experience
+                for result in results:
+                    worker_type = result['usertype']
+                    result['worker_type'] = worker_type
+                    result['experience'] = worker_types[worker_type].get(result['user_id'], 'N/A')
+
+                # Add verification status
+                verifications = WorkerVerification.objects.filter(worker_id__in=[r['user_id'] for r in results])
+                verification_dict = {v.worker_id: v.verification_status for v in verifications}
+                
+                for result in results:
+                    result['verification_status'] = verification_dict.get(result['user_id'], 'Not submitted')
+
+            elif report_type == 'financial':
+                queryset = Payments.objects.all()
+                if filters.get('paymentStatus'):
+                    queryset = queryset.filter(status=filters['paymentStatus'])
+
+                results = list(queryset.values(
+                    'payment_id',
+                    'booking_id__customer_id__firstname',
+                    'booking_id__customer_id__lastname',
+                    'booking_id__worker_id__firstname',
+                    'booking_id__worker_id__lastname',
+                    'amount',
+                    'status',
+                    'created_at'
+                ).order_by('-created_at'))  # Most recent payments first
+
+            logger.info(f"Generated results: {results[:5]}...")  # Log first 5 results
+            return JsonResponse({'success': True, 'results': results})
+        except Exception as e:
+            logger.error(f"Error generating report: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+def report_generation(request):
+    context = {
+        'page_title': 'Report Generation',
+    }
+    return render(request, 'admin_temp/report_generation.html', context)
+
+
+
+
+import csv
+from django.http import HttpResponse
+
+def download_report(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            report_type = data.get('reportType')
+            filters = data.get('filters', {})
+
+            # Generate the report data (reuse your existing logic)
+            results = generate_report_data(report_type, filters)
+
+            # Create a CSV file
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename="{report_type}_report.csv"'
+
+            writer = csv.writer(response)
+
+            # Write headers
+            if results:
+                writer.writerow(results[0].keys())
+
+            # Write data rows
+            for row in results:
+                writer.writerow(row.values())
+
+            return response
+
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+def generate_report_data(report_type, filters):
+    # This function should contain the logic from your existing generate_report function
+    # but instead of returning a JsonResponse, it should return the results list
+    # Copy the relevant parts of your generate_report function here
+    # ...
+    return results

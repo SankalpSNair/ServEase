@@ -248,7 +248,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <input type="date" name="available_date" value="{{ selected_date }}">
+                    <input type="date" id="available_date" name="available_date" value="{{ selected_date }}">
                     <button type="submit" class="search-button">Search</button>
                 </form>
             </div>
@@ -260,10 +260,10 @@
                         <div class="col-lg-4 col-md-6 col-sm-12">
                             <div class="blog-post-thumb">
                                 <div class="img">
-                                    {% if maid.profilepic %}
-                                        <img src="{{ maid.profilepic.url }}" alt="Profile Picture">
+                                    {% if maid.user_id.image %}
+                                        <img src="{{ maid.user_id.image.url }}" alt="{{ maid.firstname }} {{ maid.lastname }}">
                                     {% else %}
-                                        <img src="{% static 'assets/images/default-profile.png' %}" alt="Default Profile Picture">
+                                        <img src="{% static 'assets/images/default-profile.png' %}" alt="Default Image">
                                     {% endif %}
                                 </div>
                                 <div class="blog-content">
@@ -342,6 +342,34 @@
             profilePopup.style.display = "none";
         }
     }
+    });
+    </script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var dateInput = document.getElementById('available_date');
+        
+        // Set min date to today
+        var today = new Date();
+        var dd = String(today.getDate()).padStart(2, '0');
+        var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+        var yyyy = today.getFullYear();
+        today = yyyy + '-' + mm + '-' + dd;
+        dateInput.min = today;
+        
+        // Set max date to one year from today
+        var maxDate = new Date();
+        maxDate.setFullYear(maxDate.getFullYear() + 1);
+        var dd = String(maxDate.getDate()).padStart(2, '0');
+        var mm = String(maxDate.getMonth() + 1).padStart(2, '0');
+        var yyyy = maxDate.getFullYear();
+        maxDate = yyyy + '-' + mm + '-' + dd;
+        dateInput.max = maxDate;
+
+        // Set default value to today if not already set
+        if (!dateInput.value) {
+            dateInput.value = today;
+        }
     });
     </script>
 

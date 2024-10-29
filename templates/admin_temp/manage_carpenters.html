@@ -5,18 +5,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> </title>
+    <title>Manage Carpenters</title>
 
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'adm_assets/css/bootstrap.css' %}">
-
     <link rel="stylesheet" href="{% static 'adm_assets/vendors/iconly/bold.css'%}">
-
     <link rel="stylesheet" href="{% static 'adm_assets/vendors/perfect-scrollbar/perfect-scrollbar.css' %}">
     <link rel="stylesheet" href="{% static 'adm_assets/vendors/bootstrap-icons/bootstrap-icons.css' %}">
     <link rel="stylesheet" href="{% static 'adm_assets/css/app.css' %}">
     <link rel="shortcut icon" href="{% static 'adm_assets/images/favicon.svg' %}" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <style>
+        /* DataTable styling */
+        #table1_wrapper {
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #table1 {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+        }
+        #table1 th, #table1 td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
+        }
+        #table1 thead th {
+            background-color: #4e73df;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        #table1 tbody tr:nth-of-type(even) {
+            background-color: #f1f3f9;
+        }
+        #table1 tbody tr:hover {
+            background-color: #e9ecef;
+        }
+        .dataTables_paginate .paginate_button {
+            padding: 6px 12px;
+            margin-left: 5px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            color: #4e73df;
+        }
+        .dataTables_paginate .paginate_button.current {
+            background-color: #4e73df;
+            color: white;
+        }
+        /* Custom search box styling */
+        .dataTables_filter {
+            margin-bottom: 20px;
+        }
+        .dataTables_filter label {
+            font-weight: bold;
+            color: #4e73df;
+        }
+        .dataTables_filter input {
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 6px 12px;
+            margin-left: 8px;
+            width: 200px;
+        }
+        .dataTables_filter input:focus {
+            outline: none;
+            border-color: #4e73df;
+            box-shadow: 0 0 0 0.2rem rgba(78,115,223,0.25);
+        }
+        /* Add this to hide the table initially */
+        .table-loading {
+            visibility: hidden;
+        }
+    </style>
 </head>
 
 <body>
@@ -113,6 +177,19 @@
                 </li>
             </ul>
         </li>
+        <li class="sidebar-item ">
+            <a href="{%url 'view_verification'%}" class='sidebar-link'>
+                <i class="bi bi-stack"></i>
+                <span>Verification</span>
+            </a>
+        </li>
+        <!-- Report Generation -->
+        <li class="sidebar-item ">
+            <a href="{% url 'report_generation' %}" class='sidebar-link'>
+                <i class="bi bi-file-earmark-text"></i>
+                <span>Report Generation</span>
+            </a>
+        </li>
 </div>
 <button class="sidebar-toggler btn x"><i data-feather="x"></i></button>
 </div>
@@ -136,14 +213,12 @@
                             <nav aria-label="breadcrumb" class="breadcrumb-header float-start float-lg-end">
                                 <ol class="breadcrumb">
                                     <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
-                                    <li class="breadcrumb-item active" aria-current="page">carpenters</li>
+                                    <li class="breadcrumb-item active" aria-current="page">Carpenters</li>
                                 </ol>
                             </nav>
                         </div>
                     </div>
                 </div>
-
-                <!-- Carpenters Table -->
                 <section class="section">
                     <div class="card">
                         <div class="card-header">
@@ -153,7 +228,7 @@
                             </a>
                         </div>
                         <div class="card-body">
-                            <table class="table table-striped" id="table1">
+                            <table class="table table-striped table-loading" id="table1" style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>Name</th>
@@ -203,9 +278,51 @@
         </div>
     </div>
 
-    <script src="{% static 'adm_assets/vendors/perfect-scrollbar/perfect-scrollbar.min.js' %}"></script>
-    <script src="{% static 'adm_assets/js/bootstrap.bundle.min.js' %}"></script>
-    <script src="{% static 'adm_assets/js/main.js' %}"></script>
+    <script src="{% static 'adm_assets/vendors/perfect-scrollbar/perfect-scrollbar.min.js' %}" defer></script>
+    <script src="{% static 'adm_assets/js/bootstrap.bundle.min.js' %}" defer></script>
+    <script src="{% static 'adm_assets/vendors/apexcharts/apexcharts.js' %}" defer></script>
+    <script src="{% static 'adm_assets/js/pages/dashboard.js' %}" defer></script>
+    <script src="{% static 'adm_assets/js/main.js' %}" defer></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" defer></script>
+    <script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("Document ready");
+            var table;
+
+            // Initialize DataTable with custom options
+            try {
+                table = $('#table1').DataTable({
+                    "paging": true,
+                    "searching": true,
+                    "ordering": false,
+                    "info": false,
+                    "lengthChange": false,
+                    "pageLength": 10,
+                    "language": {
+                        "paginate": {
+                            "next": "Next",
+                            "previous": "Previous"
+                        },
+                        "search": "Search:" // Keep the "Search:" label
+                    },
+                    "dom": '<"top"f>rt<"bottom"p><"clear">',
+                    "initComplete": function(settings, json) {
+                        console.log("DataTable initialized");
+                        // Enhance the default search box
+                        $('.dataTables_filter input')
+                            .attr('placeholder', 'Enter search term...')
+                            .css('width', '300px');
+                        
+                        // Remove the loading class to show the table
+                        $('#table1').removeClass('table-loading');
+                    }
+                });
+            } catch (error) {
+                console.error("Error initializing DataTable:", error);
+            }
+        });
+    </script>
 </body>
 
 </html>

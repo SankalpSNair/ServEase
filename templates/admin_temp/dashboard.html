@@ -82,14 +82,7 @@
                                 </li>
                             </ul>
                         </li>
-<!-- verify Customers  -->
-                        <li class="sidebar-item ">
-                            <a href="{%url 'view_verification'%}" class='sidebar-link'>
-                                <i class="bi bi-stack"></i>
-                                <span>verification</span>
-                            </a>
-                        </li>
-<!-- verify Workers  -->
+
                         <li class="sidebar-item  has-sub">
                             <a href="#" class='sidebar-link'>
                                 <i class="bi bi-stack"></i>
@@ -113,6 +106,22 @@
                                 </li>
                             </ul>
                         </li>
+                        <!-- verify Customers  -->
+                        <li class="sidebar-item ">
+                            <a href="{%url 'view_verification'%}" class='sidebar-link'>
+                                <i class="bi bi-stack"></i>
+                                <span>Verification</span>
+                            </a>
+                        </li>
+                        
+                        <!-- Report Generation -->
+                        <li class="sidebar-item ">
+                            <a href="{% url 'report_generation' %}" class='sidebar-link'>
+                                <i class="bi bi-file-earmark-text"></i>
+                                <span>Report Generation</span>
+                            </a>
+                        </li>
+
                 </div>
                 <button class="sidebar-toggler btn x"><i data-feather="x"></i></button>
             </div>
@@ -321,12 +330,32 @@
                             <div class="card-header">
                                 <h4>Most Rated Workers</h4>
                             </div>
-                            <div>
-                                <p align="center">...  ratings display  ...</p>
+                            <div class="card-body">
+                                <ul class="list-group">
+                                    {% for worker in top_rated_workers %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar avatar-md me-3">
+                                                {% if worker.worker.image %}
+                                                    <img src="{{ worker.worker.image.url }}" alt="{{ worker.worker.firstname }}'s profile picture">
+                                                {% else %}
+                                                    <img src="{% static 'path/to/default/image.jpg' %}" alt="Default profile picture">
+                                                {% endif %}
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0">{{ worker.worker.firstname }} {{ worker.worker.lastname }}</h6>
+                                                <small class="text-muted">{{ worker.worker.usertype }}</small>
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill">
+                                            {{ worker.average_rating|floatformat:1 }} ★
+                                        </span>
+                                    </li>
+                                    {% empty %}
+                                    <li class="list-group-item">No rated workers yet.</li>
+                                    {% endfor %}
+                                </ul>
                             </div>
-                            <!-- <div class="card-body">
-                                <div id="chart-visitors-profile"></div>
-                            </div> -->
                         </div>
                     </div>
                 </section>

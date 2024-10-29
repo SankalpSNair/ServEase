@@ -47,6 +47,10 @@ urlpatterns = [
     path('view-chat/<int:user_id>/', views.admin_view_chat, name='admin_view_chat'),
     path('check_user_status/', views.check_user_status, name='check_user_status'),
     path('adm_send_message/<int:user_id>/', views.adm_send_message, name='adm_send_message'),
+    path('report-generation/', views.report_generation, name='report_generation'),
+    path('generate_report/', views.generate_report, name='generate_report'),
+    path('download_report/', views.download_report, name='download_report'),
+
 # admin side end
 
 #customer side start  
@@ -69,8 +73,7 @@ urlpatterns = [
     path('users-email-search/', views.usersemailsearch, name='useremailsearch'),
     path('search-book-status/', views.searchbookstatus, name='searchbookstatus'),
     path('update_booking_status/', views.update_booking_status, name='update_booking_status'),
-    path('update_worker_booking_status/', views.update_worker_booking_status, name='update_worker_booking_status'),
-
+   
     path('send_message/', views.send_message, name='send_message'),
     path('get_messages/', views.get_messages, name='get_messages'),
     
@@ -82,6 +85,8 @@ urlpatterns = [
     path('payment-failed/', views.payment_failed, name='payment_failed'),
     path('payment-callback/', views.payment_callback, name='payment_callback'),
     path('payment_page/<str:payment_id>/', views.payment_page, name='payment_page'),
+    path('submit_rating/', views.submit_rating, name='submit_rating'),
+    path('download_invoice/<int:booking_id>/', views.download_invoice, name='download_invoice'),
 #customer side end
 
 #worker side start
@@ -91,6 +96,8 @@ urlpatterns = [
     path('worker/bookings/', views.view_my_booking, name='view_my_booking'),
     path('verification/', views.worker_verification, name='worker_verification'),
     path('view-verification/', views.view_verification, name='view_verification'),
+    path('update_worker_booking_status/', views.update_worker_booking_status, name='update_worker_booking_status'),
+
 #worker side end
 
 ] 

@@ -385,6 +385,20 @@ body {
 /* ... (rest of the styles remain unchanged) ... */
 
     </style>
+    <!-- Add this in the <head> section -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+
+    <!-- Add this to your existing <style> section or in a separate CSS file -->
+    <style>
+        .star-rating {
+            font-size: 24px;
+            color: #ccc;
+            cursor: pointer;
+        }
+        .star-rating .fas.fa-star.active {
+            color: #ffc107;
+        }
+    </style>
     </head>
     <header class="header-area header-sticky">
         <div class="container">
@@ -407,6 +421,7 @@ body {
                             <li><a href="#" style="font-size: 15px;">Contact Us</a></li>
                             <li><a href="{% url 'view_bookings' %}" style="font-size: 15px;">Bookings</a></li>
                             <li><a href="{% url 'logout' %}" style="font-size: 15px;">Log Out</a></li>
+                            <li><a href="#" style="font-size: 15px;">Hey,Sankalp</a></li>
                                 
                         </ul>
                         <a class='menu-trigger'>
@@ -475,34 +490,51 @@ body {
                                 <th>Worker Type</th>
                                 <th>Worker Name</th>
                                 <th>Appointment Date</th>
-                                <!-- <th>Appointment Time</th>
-                                <th>Service Type</th> -->
                                 <th>Amount Payable</th>
                                 <th>Status</th>
+                                <th>Rating</th>  <!-- New column for rating -->
                                 <th>Actions</th>
+                                <th>Invoice</th>  <!-- New column for invoice -->
                             </tr>
                         </thead>
                         <tbody>
                             {% for booking in bookings %}
-                                <tr>
-                                    <td>{{ booking.worker_type }}</td>
-                                    <td>{{ booking.worker_id.firstname }} {{ booking.worker_id.lastname }}</td>
-                                    <td>{{ booking.appointment_date }}</td>
-                                    <td>₹{{ booking.pay_amount }}</td>
-                                    <td>{{ booking.status }}</td>
-                                    <td class="action-buttons">
-                                        {% if booking.status == 'Confirmed' %}
-                                            <button class="btn btn-sm btn-info" data-toggle="modal" data-target="#detailsModal{{ booking.id }}">Details</button>
-                                        {% endif %}
-                                        {% if booking.status == 'Pending' %}
-                                        <a href="{% url 'create_payment' booking_id=booking.id %}" class="btn btn-sm btn-success">Make Payment</a>
-                                            <button class="btn btn-sm btn-danger cancel-booking-btn" data-booking-id="{{ booking.id }}">Cancel</button>
-                                        {% elif booking.status == 'Paid' %}
-                                            <button class="btn btn-sm btn-success" disabled>Paid</button>
-                                            <button class="btn btn-sm btn-danger cancel-booking-btn" data-booking-id="{{ booking.id }}">Cancel</button>
-                                        {% endif %}
-                                    </td>
-                                </tr>
+                            <tr>
+                                <td>{{ booking.worker_type }}</td>
+                                <td>{{ booking.worker_id.firstname }} {{ booking.worker_id.lastname }}</td>
+                                <td>{{ booking.appointment_date }}</td>
+                                <td>₹{{ booking.pay_amount }}</td>
+                                <td>{{ booking.status }}</td>
+                                <td>
+                                    {% if booking.status == 'Completed' %}
+                                        <button class="btn btn-sm btn-primary rate-booking-btn" 
+                                                data-booking-id="{{ booking.id }}" 
+                                                data-worker-id="{{ booking.worker_id.user_id}}"
+                                                data-customer-id="{{ booking.customer_id.user_id}}">Rate</button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-secondary" disabled>Rate</button>
+                                    {% endif %}
+                                </td>
+                                <td class="action-buttons">
+                                    {% if booking.status == 'Confirmed' %}
+                                        <button class="btn btn-sm btn-info" data-toggle="modal" data-target="#detailsModal{{ booking.id }}">Details</button>
+                                    {% endif %}
+                                    {% if booking.status == 'Pending' %}
+                                        <a href="{% url 'create_payment' booking.id %}" class="btn btn-sm btn-success">Make Payment</a>
+                                        <button class="btn btn-sm btn-danger cancel-booking-btn" data-booking-id="{{ booking.id }}">Cancel</button>
+                                    {% elif booking.status == 'Paid' %}
+                                        <button class="btn btn-sm btn-success" disabled>Paid</button>
+                                        <button class="btn btn-sm btn-danger cancel-booking-btn" data-booking-id="{{ booking.id }}">Cancel</button>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if booking.status == 'Paid' or booking.status == 'Completed' %}
+                                        <a href="{% url 'download_invoice' booking.id %}" class="btn btn-sm btn-primary" target="_blank">Download Invoice</a>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-secondary" disabled>Invoice N/A</button>
+                                    {% endif %}
+                                </td>
+                            </tr>
                             
                                 
                                 <!-- Modal for booking details -->
@@ -539,7 +571,44 @@ body {
             {% endif %}
         </div>
     </section>
-    
+    <div class="modal fade" id="ratingModal" tabindex="-1" role="dialog" aria-labelledby="ratingModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="ratingModalLabel">Rate Our Service</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="ratingForm">
+                        <input type="hidden" id="bookingId" name="booking_id">
+                        <input type="hidden" id="workerId" name="worker_id">
+                        <input type="hidden" id="customerId" name="customer_id">
+                        <div class="form-group">
+                            <label for="rating">Rating:</label>
+                            <div class="star-rating">
+                                <i class="fas fa-star" data-rating="1"></i>
+                                <i class="fas fa-star" data-rating="2"></i>
+                                <i class="fas fa-star" data-rating="3"></i>
+                                <i class="fas fa-star" data-rating="4"></i>
+                                <i class="fas fa-star" data-rating="5"></i>
+                            </div>
+                            <input type="hidden" id="rating" name="rating" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="comment">Comment:</label>
+                            <textarea class="form-control" id="comment" name="comment" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="submitRating">Submit Rating</button>
+                </div>
+            </div>
+        </div>
+    </div>
     
     <footer class="footer">
         <div class="container">
@@ -673,8 +742,104 @@ body {
                 });
             }, 2000); // Simulate 2 seconds of processing time
         });
+
+        // Modify the rate button click event
+        $('.rate-booking-btn').on('click', function(e) {
+            e.preventDefault();
+            var bookingId = $(this).data('booking-id');
+            var workerId = $(this).data('worker-id');
+            var customerId = $(this).data('customer-id');
+            console.log("Booking ID:", bookingId, "Worker ID:", workerId, "Customer ID:", customerId);
+            $('#bookingId').val(bookingId);
+            $('#workerId').val(workerId);
+            $('#customerId').val(customerId);
+            $('#ratingModal').modal('show');
+        });
+
+        // Star rating functionality
+        $('.star-rating .fa-star').on('click', function() {
+            var rating = $(this).data('rating');
+            $('#rating').val(rating);
+            $('.star-rating .fa-star').removeClass('active');
+            $(this).addClass('active').prevAll().addClass('active');
+        });
+
+        // Hover effect
+        $('.star-rating .fa-star').on('mouseover', function() {
+            var hoverRating = $(this).data('rating');
+            $('.star-rating .fa-star').removeClass('active');
+            $(this).addClass('active').prevAll().addClass('active');
+        }).on('mouseout', function() {
+            var rating = $('#rating').val();
+            if (rating) {
+                $('.star-rating .fa-star').removeClass('active');
+                $('.star-rating .fa-star:lt(' + rating + ')').addClass('active');
+            } else {
+                $('.star-rating .fa-star').removeClass('active');
+            }
+        });
+
+        // Reset stars when modal is closed
+        $('#ratingModal').on('hidden.bs.modal', function () {
+            $('#rating').val('');
+            $('.star-rating .fa-star').removeClass('active');
+        });
+
+        // Modify the rating submission
+        $('#submitRating').on('click', function() {
+            var rating = $('#rating').val();
+            if (!rating) {
+                alert('Please select a rating');
+                return;
+            }
+
+            var formData = {
+                booking_id: $('#bookingId').val(),
+                worker_id: $('#workerId').val(),
+                customer_id: $('#customerId').val(),
+                rating: rating,
+                comment: $('#comment').val()
+            };
+
+            console.log("Sending data:", formData);
+
+            $.ajax({
+                url: '{% url "submit_rating" %}',
+                type: 'POST',
+                data: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                success: function(response) {
+                    console.log("Success response:", response);
+                    alert('Rating submitted successfully!');
+                    $('#ratingModal').modal('hide');
+                    location.reload();
+                },
+                error: function(xhr, status, error) {
+                    console.error("Error response:", xhr.responseText);
+                    alert('An error occurred while submitting the rating.');
+                }
+            });
+        });
+
+        // Function to get CSRF token
+        function getCookie(name) {
+            var cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                var cookies = document.cookie.split(';');
+                for (var i = 0; i < cookies.length; i++) {
+                    var cookie = jQuery.trim(cookies[i]);
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
     });
-</script>
+    </script>
     <!-- For profile -->
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
   </body>

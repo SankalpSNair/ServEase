@@ -249,10 +249,10 @@
     <div class="col-lg-4 col-md-6 col-sm-12">
         <div class="blog-post-thumb">
             <div class="img">
-                {% if carpenter.profilepic %}
-                    <img src="{{ carpenter.profilepic.url }}" alt="Profile Picture">
+                {% if carpenter.user_id.image %}
+                    <img src="{{ carpenter.user_id.image.url }}" alt="{{ carpenter.firstname }} {{ carpenter.lastname }}">
                 {% else %}
-                    <img src="{% static 'assets/images/default-profile.png' %}" alt="Default Profile Picture">
+                    <img src="/path/to/default/image.jpg" alt="Default Image">
                 {% endif %}
             </div>
             <div class="blog-content">

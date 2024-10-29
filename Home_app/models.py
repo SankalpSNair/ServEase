@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import User
+from decimal import Decimal
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 # Create your models here.
 
@@ -18,6 +20,7 @@ class Users(models.Model):
     password = models.CharField(max_length=256)
     usertype = models.CharField(max_length=20)
     active = models.BooleanField(default=True)
+    
 
 class Skill(models.Model):
     skill_id = models.AutoField(primary_key=True)
@@ -142,8 +145,8 @@ class Booking(models.Model):
     hours_booked = models.PositiveIntegerField(default=1)
 
     def calculate_pay_amount(self):
-        service_rate = ServiceRate.objects.get(service_type=self.service_type)
-        self.pay_amount = service_rate.hourly_rate * self.hours_booked
+        hourly_rate = ServiceRate.get_rate(self.service_type)
+        self.pay_amount = self.hours_booked * hourly_rate
         self.save()
 
     class Meta:
@@ -161,10 +164,15 @@ class ServiceRate(models.Model):
     service_type = models.CharField(max_length=20, choices=SERVICE_TYPES, unique=True)
     hourly_rate = models.DecimalField(max_digits=8, decimal_places=2)
 
+    @classmethod
+    def get_rate(cls, service_type):
+        try:
+            return cls.objects.get(service_type=service_type).hourly_rate
+        except cls.DoesNotExist:
+            return Decimal('200.00')  # Default rate
+
     def __str__(self):
         return f"{self.get_service_type_display()} - ${self.hourly_rate}/hour"
-
-
 
 from django.db.models import Q
 
@@ -183,9 +191,6 @@ class ChatMessage(models.Model):
 
     def __str__(self):
         return f"{self.sender.firstname}: {self.message[:50]}"
-
-
-
 
 class Payments(models.Model):
     payment_id = models.AutoField(primary_key=True)
@@ -214,3 +219,22 @@ class WorkerVerification(models.Model):
     @property
     def worker_id(self):
         return self.worker.user_id
+
+class WorkerRating(models.Model):
+    customer = models.ForeignKey(Users, on_delete=models.CASCADE, related_name='ratings_given')
+    worker = models.ForeignKey(Users, on_delete=models.CASCADE, related_name='ratings_received')
+    rating = models.PositiveIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)]
+    )
+    comment = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('customer', 'worker')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.customer.firstname} rated {self.worker.firstname}: {self.rating}"
+
+
