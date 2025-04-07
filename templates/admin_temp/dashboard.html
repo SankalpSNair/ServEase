@@ -19,6 +19,22 @@
     <link rel="shortcut icon" href="{% static 'adm_assets/images/favicon.svg' %}" type="image/x-icon">
     <!-- Leaflet CSS for map visualization -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        /* Custom badge colors for worker rankings */
+        .bg-1 { background-color: #FFD700 !important; color: #000 !important; } /* Gold */
+        .bg-2 { background-color: #C0C0C0 !important; color: #000 !important; } /* Silver */
+        .bg-3 { background-color: #CD7F32 !important; color: #fff !important; } /* Bronze */
+        
+        /* Animation for filtering */
+        .worker-item {
+            transition: all 0.3s ease;
+        }
+        
+        /* Hover effect for worker items */
+        .worker-item:hover {
+            background-color: rgba(0,0,0,0.02);
+        }
+    </style>
 </head>
 
 <body>
@@ -121,6 +137,14 @@
                             <a href="{% url 'report_generation' %}" class='sidebar-link'>
                                 <i class="bi bi-file-earmark-text"></i>
                                 <span>Report Generation</span>
+                            </a>
+                        </li>
+                        
+                        <!-- Logout -->
+                        <li class="sidebar-item">
+                            <a href="{% url 'logout' %}" class='sidebar-link'>
+                                <i class="bi bi-box-arrow-right"></i>
+                                <span>Logout</span>
                             </a>
                         </li>
 
@@ -288,121 +312,176 @@
                             </div>
                         </div>
                         
-                        <div class="row">
-                            <div class="col-12 col-xl-4">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h4>Latest Feedbacks</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover table-lg">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Name</th>
-                                                        <th>Feedback</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr>
-                                                        <td class="col-3">
-                                                            <div class="d-flex align-items-center">
-                                                                <div class="avatar avatar-md">
-                                                                    <img src="{% static 'adm_assets/images/faces/5.jpg' %}">
-                                                                </div>
-                                                                <p class="font-bold ms-3 mb-0">User 1</p>
-                                                            </div>
-                                                        </td>
-                                                        <td class="col-auto">
-                                                            <p class=" mb-0">feedback 1</p>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td class="col-3">
-                                                            <div class="d-flex align-items-center">
-                                                                <div class="avatar avatar-md">
-                                                                    <img src="{% static 'adm_assets/images/faces/2.jpg' %}">
-                                                                </div>
-                                                                <p class="font-bold ms-3 mb-0">User 2</p>
-                                                            </div>
-                                                        </td>
-                                                        <td class="col-auto">
-                                                            <p class=" mb-0">feedback 2</p>
-                                                        </td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
+                                                </div>
+                    <div class="col-12 col-lg-3">
+                        <!-- Admin Profile Card with Enhanced Design -->
+                        <div class="card shadow-sm border-0">
+                            <div class="card-body py-4 px-4" style="background: linear-gradient(135deg, #6B5B95 0%, #45567d 100%); border-radius: 0.7rem;">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-xl bg-white p-1" style="border-radius: 50%;">
+                                            <img src="{% static 'adm_assets/images/faces/1.jpg' %}" alt="Admin Profile" style="border-radius: 50%;">
+                                        </div>
+                                        <div class="ms-3 name text-white">
+                                            <h5 class="font-bold mb-1">Admin</h5>
+                                            <h6 class="text-light mb-0">admin@gmail.com</h6>
+                                            <div class="mt-2">
+                                                <span class="badge bg-light text-dark">Online</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                    </div>
-                    <div class="col-12 col-lg-3">
-                        <div class="card">
-                            <div class="card-body py-4 px-5">
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar avatar-xl">
-                                        <img src="{% static 'adm_assets/images/faces/1.jpg' %}" alt="Face 1">
-                                    </div>
-                                    <div class="ms-3 name">
-                                        <h5 class="font-bold">Admin</h5>
-                                        <h6 class="text-muted mb-0">admin@gmail.com</h6>
+                                    <div>
+
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="card">
-                            <div class="card-header">
-                                <h4>Recent Messages</h4>
+                        
+                        <!-- Recent Messages with Enhanced Design -->
+                        <div class="card shadow-sm border-0 mt-4">
+                            <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #f8f9fa;">
+                                <h4 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Recent Messages</h4>
+                                <span class="badge bg-primary rounded-pill">{{ recent_messages|length }}</span>
                             </div>
-                            <div class="card-content pb-4">
+                            <div class="card-content pb-2">
                                 {% for message in recent_messages %}
-                                <div class="recent-message d-flex px-4 py-3">
+                                <div class="recent-message d-flex px-4 py-3 {% if forloop.first %}border-start border-4 border-primary{% endif %}" style="transition: all 0.3s ease;">
                                     <div class="avatar avatar-lg">
-                                        <img src="{{ message.sender.image.url }}" alt="{{ message.sender.firstname }}">
+                                        <img src="{{ message.sender.image.url }}" alt="{{ message.sender.firstname }}" style="border-radius: 50%; object-fit: cover;">
                                     </div>
                                     <div class="name ms-4">
-                                        <h5 class="mb-1">{{ message.sender.firstname }} {{ message.sender.lastname }}</h5>
+                                        <div class="d-flex align-items-center">
+                                            <h5 class="mb-1">{{ message.sender.firstname }} {{ message.sender.lastname }}</h5>
+                                            {% if forloop.first %}
+                                            <span class="badge bg-danger ms-2">New</span>
+                                            {% endif %}
+                                        </div>
                                         <h6 class="text-muted mb-0">{{ message.message|truncatechars:50 }}</h6>
-                                        <small class="text-muted">{{ message.timestamp|date:"F d, Y H:i" }}</small>
+                                        <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ message.timestamp|date:"F d, Y H:i" }}</small>
                                     </div>
                                 </div>
                                 {% empty %}
-                                <div class="px-4 py-3">
-                                    <p>No recent messages.</p>
+                                <div class="px-4 py-3 text-center">
+                                    <i class="bi bi-inbox text-muted" style="font-size: 2rem;"></i>
+                                    <p class="mt-2">No recent messages.</p>
                                 </div>
                                 {% endfor %}
-                                <div class="px-4">
-                                    <a href="{% url 'admin_new_chat' %}" class='btn btn-block btn-xl btn-light-primary font-bold mt-3'>Start Conversation</a>
+                                <div class="px-4 mb-3">
+                                    <a href="{% url 'admin_new_chat' %}" class='btn btn-block btn-primary font-bold mt-2 d-flex align-items-center justify-content-center'>
+                                        <i class="bi bi-chat-text me-2"></i> Start Conversation
+                                    </a>
                                 </div>
-                        </div>
-                        <div class="card">
-                            <div class="card-header">
-                                <h4>Most Rated Workers</h4>
                             </div>
-                            <div class="card-body">
-                                <ul class="list-group">
-                                    {% for worker in top_rated_workers %}
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div class="d-flex align-items-center">
+                        </div>
+                        
+                        <!-- Latest Feedbacks with Enhanced Design -->
+                        <div class="card shadow-sm border-0 mt-4">
+                            <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #f8f9fa;">
+                                <h4 class="mb-0"><i class="bi bi-star me-2"></i>Latest Feedbacks</h4>
+                                <a href="#" class="text-primary small">View All</a>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="list-group list-group-flush">
+                                    <div class="list-group-item border-0 py-3">
+                                        <div class="d-flex align-items-center mb-2">
                                             <div class="avatar avatar-md me-3">
-                                                {% if worker.worker.image %}
-                                                    <img src="{{ worker.worker.image.url }}" alt="{{ worker.worker.firstname }}'s profile picture">
-                                                {% else %}
-                                                    <img src="{% static 'path/to/default/image.jpg' %}" alt="Default profile picture">
-                                                {% endif %}
+                                                <img src="{% static 'adm_assets/images/faces/5.jpg' %}" style="border-radius: 50%; object-fit: cover;">
+                                            </div>
+                                            <div>
+                                                <h6 class="font-bold mb-0">User 1</h6>
+                                                <div class="text-warning">
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p class="mb-0 ps-5">"feedback 1"</p>
+                                        <small class="text-muted ps-5">2 days ago</small>
+                                    </div>
+                                    <div class="list-group-item border-0 py-3">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="avatar avatar-md me-3">
+                                                <img src="{% static 'adm_assets/images/faces/2.jpg' %}" style="border-radius: 50%; object-fit: cover;">
+                                            </div>
+                                            <div>
+                                                <h6 class="font-bold mb-0">User 2</h6>
+                                                <div class="text-warning">
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-fill"></i>
+                                                    <i class="bi bi-star-half"></i>
+                                                    <i class="bi bi-star"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p class="mb-0 ps-5">"feedback 2"</p>
+                                        <small class="text-muted ps-5">5 days ago</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Top Rated Workers with Enhanced Design -->
+                        <div class="card shadow-sm border-0 mt-4">
+                            <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #f8f9fa;">
+                                <h4 class="mb-0"><i class="bi bi-award me-2"></i>Top Rated Workers</h4>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-light dropdown-toggle" type="button" id="workerFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                        All Workers
+                                    </button>
+                                    <ul class="dropdown-menu" aria-labelledby="workerFilterDropdown">
+                                        <li><a class="dropdown-item worker-filter active" data-type="all" href="javascript:void(0)">All Workers</a></li>
+                                        <li><a class="dropdown-item worker-filter" data-type="plumber" href="javascript:void(0)">Plumbers</a></li>
+                                        <li><a class="dropdown-item worker-filter" data-type="electrician" href="javascript:void(0)">Electricians</a></li>
+                                        <li><a class="dropdown-item worker-filter" data-type="house_maid" href="javascript:void(0)">House Maids</a></li>
+                                        <li><a class="dropdown-item worker-filter" data-type="home_nurse" href="javascript:void(0)">Home Nurses</a></li>
+                                        <li><a class="dropdown-item worker-filter" data-type="carpenter" href="javascript:void(0)">Carpenters</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <ul class="list-group list-group-flush" id="topRatedWorkersList">
+                                    {% for worker in top_rated_workers %}
+                                    <li class="list-group-item border-0 py-3 d-flex justify-content-between align-items-center worker-item" data-worker-type="{{ worker.worker.usertype }}">
+                                        <div class="d-flex align-items-center">
+                                            <div class="position-relative">
+                                                <div class="avatar avatar-md me-3">
+                                                    {% if worker.worker.image %}
+                                                        <img src="{{ worker.worker.image.url }}" alt="{{ worker.worker.firstname }}'s profile picture" style="border-radius: 50%; object-fit: cover;">
+                                                    {% else %}
+                                                        <img src="{% static 'adm_assets/images/faces/8.jpg' %}" alt="Default profile picture" style="border-radius: 50%; object-fit: cover;">
+                                                    {% endif %}
+                                                </div>
+                                                <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill worker-rank">
+                                                    {{ forloop.counter }}
+                                                </span>
                                             </div>
                                             <div>
                                                 <h6 class="mb-0">{{ worker.worker.firstname }} {{ worker.worker.lastname }}</h6>
-                                                <small class="text-muted">{{ worker.worker.usertype }}</small>
+                                                <small class="text-muted text-capitalize">{{ worker.worker.usertype }}</small>
                                             </div>
                                         </div>
-                                        <span class="badge bg-primary rounded-pill">
-                                            {{ worker.average_rating|floatformat:1 }} ★
-                                        </span>
+                                        <div class="d-flex align-items-center">
+                                            <div class="text-warning me-2">
+                                                {% with ''|center:worker.average_rating|make_list as stars %}
+                                                {% for _ in stars %}
+                                                <i class="bi bi-star-fill"></i>
+                                                {% endfor %}
+                                                {% endwith %}
+                                            </div>
+                                            <span class="badge bg-primary rounded-pill">
+                                                {{ worker.average_rating|floatformat:1 }}
+                                            </span>
+                                        </div>
                                     </li>
                                     {% empty %}
-                                    <li class="list-group-item">No rated workers yet.</li>
+                                    <li class="list-group-item border-0 py-3 text-center" id="noWorkersMessage">
+                                        <i class="bi bi-emoji-smile text-muted" style="font-size: 2rem;"></i>
+                                        <p class="mt-2">No rated workers yet.</p>
+                                    </li>
                                     {% endfor %}
                                 </ul>
                             </div>
@@ -795,6 +874,102 @@
 
         // Initial load of geospatial map
         fetchGeospatialData();
+        
+        // Worker Type Filter Functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const filterLinks = document.querySelectorAll('.worker-filter');
+            const workerItems = document.querySelectorAll('.worker-item');
+            const dropdownButton = document.getElementById('workerFilterDropdown');
+            const noWorkersMessage = document.getElementById('noWorkersMessage');
+            const workersList = document.getElementById('topRatedWorkersList');
+            
+            // Apply badge colors based on ranking
+            function updateRankings() {
+                const visibleWorkers = Array.from(document.querySelectorAll('.worker-item:not(.d-none)'));
+                visibleWorkers.forEach((worker, index) => {
+                    const rankBadge = worker.querySelector('.worker-rank');
+                    rankBadge.textContent = index + 1;
+                    
+                    // Remove all bg-* classes
+                    rankBadge.className = rankBadge.className.replace(/bg-\w+/g, '');
+                    
+                    // Add appropriate color class based on rank
+                    if (index === 0) {
+                        rankBadge.classList.add('bg-1'); // Gold for first place
+                    } else if (index === 1) {
+                        rankBadge.classList.add('bg-2'); // Silver for second place
+                    } else if (index === 2) {
+                        rankBadge.classList.add('bg-3'); // Bronze for third place
+                    } else {
+                        rankBadge.classList.add('bg-secondary'); // Gray for others
+                    }
+                });
+            }
+            
+            // Filter workers by type
+            function filterWorkers(workerType) {
+                let visibleCount = 0;
+                
+                workerItems.forEach(item => {
+                    const itemType = item.getAttribute('data-worker-type');
+                    
+                    if (workerType === 'all' || itemType === workerType) {
+                        item.classList.remove('d-none');
+                        visibleCount++;
+                    } else {
+                        item.classList.add('d-none');
+                    }
+                });
+                
+                // Show or hide the "no workers" message
+                if (visibleCount === 0 && noWorkersMessage) {
+                    const customMessage = document.createElement('li');
+                    customMessage.className = 'list-group-item border-0 py-3 text-center no-workers-filtered';
+                    customMessage.innerHTML = `
+                        <i class="bi bi-filter-circle text-muted" style="font-size: 2rem;"></i>
+                        <p class="mt-2">No ${workerType !== 'all' ? workerType : ''} workers found with ratings.</p>
+                    `;
+                    
+                    // Remove any existing custom messages
+                    const existingCustomMessage = document.querySelector('.no-workers-filtered');
+                    if (existingCustomMessage) {
+                        existingCustomMessage.remove();
+                    }
+                    
+                    workersList.appendChild(customMessage);
+                } else {
+                    // Remove any existing custom messages
+                    const existingCustomMessage = document.querySelector('.no-workers-filtered');
+                    if (existingCustomMessage) {
+                        existingCustomMessage.remove();
+                    }
+                }
+                
+                // Update rankings after filtering
+                updateRankings();
+            }
+            
+            // Add click event listeners to filter links
+            filterLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    // Remove active class from all links
+                    filterLinks.forEach(l => l.classList.remove('active'));
+                    
+                    // Add active class to clicked link
+                    this.classList.add('active');
+                    
+                    // Update dropdown button text
+                    dropdownButton.textContent = this.textContent;
+                    
+                    // Filter workers
+                    const workerType = this.getAttribute('data-type');
+                    filterWorkers(workerType);
+                });
+            });
+            
+            // Initial ranking update
+            updateRankings();
+        });
     });
 </script>
 </body>
