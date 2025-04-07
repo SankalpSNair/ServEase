@@ -17,6 +17,8 @@
     <link rel="stylesheet" href="{% static 'adm_assets/vendors/bootstrap-icons/bootstrap-icons.css' %}">
     <link rel="stylesheet" href="{% static 'adm_assets/css/app.css' %}">
     <link rel="shortcut icon" href="{% static 'adm_assets/images/favicon.svg' %}" type="image/x-icon">
+    <!-- Leaflet CSS for map visualization -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 </head>
 
 <body>
@@ -228,7 +230,17 @@
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-12 col-xl-4">
+                            <div class="col-12 col-xl-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h4>Service Category Performance</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="serviceCategoryChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-xl-6">
                                 <div class="card">
                                     <div class="card-header">
                                         <h4>District Based Bookings</h4>
@@ -238,7 +250,46 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-12 col-xl-8">
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-12 col-xl-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h4>Customer Retention Analysis</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="customerRetentionChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-xl-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h4>Revenue Analysis</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="revenueAnalysisChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h4>Geospatial Booking Analysis</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="bookingMap" style="height: 400px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-12 col-xl-4">
                                 <div class="card">
                                     <div class="card-header">
                                         <h4>Latest Feedbacks</h4>
@@ -285,7 +336,6 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
                     </div>
                     <div class="col-12 col-lg-3">
                         <div class="card">
@@ -385,6 +435,7 @@
     <!-- ... existing code ... -->
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         var ctx = document.getElementById('monthlyBookingsChart').getContext('2d');
@@ -511,6 +562,239 @@
 
         // Initial load of district chart
         fetchDistrictData();
+
+        // Service Category Performance Chart
+        var serviceCategoryCtx = document.getElementById('serviceCategoryChart').getContext('2d');
+        var serviceCategoryChart;
+
+        function updateServiceCategoryChart(data) {
+            if (serviceCategoryChart) {
+                serviceCategoryChart.destroy();
+            }
+            serviceCategoryChart = new Chart(serviceCategoryCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        data: data.values,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.8)',
+                            'rgba(54, 162, 235, 0.8)',
+                            'rgba(255, 206, 86, 0.8)',
+                            'rgba(75, 192, 192, 0.8)',
+                            'rgba(153, 102, 255, 0.8)',
+                            'rgba(255, 159, 64, 0.8)',
+                        ],
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Bookings by Service Category'
+                        }
+                    }
+                }
+            });
+        }
+
+        function fetchServiceCategoryData() {
+            fetch('/api/service-category-performance/')
+                .then(response => response.json())
+                .then(data => {
+                    updateServiceCategoryChart(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching service category data:', error);
+                });
+        }
+
+        // Initial load of service category chart
+        fetchServiceCategoryData();
+
+        // Customer Retention Analysis Chart
+        var customerRetentionCtx = document.getElementById('customerRetentionChart').getContext('2d');
+        var customerRetentionChart;
+
+        function updateCustomerRetentionChart(data) {
+            if (customerRetentionChart) {
+                customerRetentionChart.destroy();
+            }
+            customerRetentionChart = new Chart(customerRetentionCtx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: 'New Customers',
+                            data: data.new_customers,
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Returning Customers',
+                            data: data.returning_customers,
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Customers'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Month'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'New vs Returning Customers (Last 12 Months)'
+                        }
+                    }
+                }
+            });
+        }
+
+        function fetchCustomerRetentionData() {
+            fetch('/api/customer-retention-analysis/')
+                .then(response => response.json())
+                .then(data => {
+                    updateCustomerRetentionChart(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching customer retention data:', error);
+                });
+        }
+
+        // Initial load of customer retention chart
+        fetchCustomerRetentionData();
+
+        // Revenue Analysis Chart
+        var revenueAnalysisCtx = document.getElementById('revenueAnalysisChart').getContext('2d');
+        var revenueAnalysisChart;
+
+        function updateRevenueAnalysisChart(data) {
+            if (revenueAnalysisChart) {
+                revenueAnalysisChart.destroy();
+            }
+            revenueAnalysisChart = new Chart(revenueAnalysisCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Revenue by Service Type',
+                        data: data.values,
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Revenue (₹)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Service Type'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Revenue by Service Type'
+                        }
+                    }
+                }
+            });
+        }
+
+        function fetchRevenueAnalysisData() {
+            fetch('/api/revenue-analysis/')
+                .then(response => response.json())
+                .then(data => {
+                    updateRevenueAnalysisChart(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching revenue analysis data:', error);
+                });
+        }
+
+        // Initial load of revenue analysis chart
+        fetchRevenueAnalysisData();
+
+        // Geospatial Booking Analysis Map
+        var map = L.map('bookingMap').setView([10.1632, 76.6413], 7); // Center on Kerala
+
+        // Add the OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        function updateGeospatialMap(data) {
+            // Clear existing markers
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.Marker || layer instanceof L.Circle) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            // Add new markers
+            data.data.forEach(function(item) {
+                // Create a circle with radius proportional to the number of bookings
+                var circle = L.circle([item.lat, item.lng], {
+                    color: 'red',
+                    fillColor: '#f03',
+                    fillOpacity: 0.5,
+                    radius: item.count * 500 // Scale the radius based on the count
+                }).addTo(map);
+
+                // Add a popup with information
+                circle.bindPopup(`<b>${item.district}</b><br>Bookings: ${item.count}`);
+            });
+        }
+
+        function fetchGeospatialData() {
+            fetch('/api/geospatial-booking-data/')
+                .then(response => response.json())
+                .then(data => {
+                    updateGeospatialMap(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching geospatial data:', error);
+                });
+        }
+
+        // Initial load of geospatial map
+        fetchGeospatialData();
     });
 </script>
 </body>

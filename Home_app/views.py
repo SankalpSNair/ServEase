@@ -35,10 +35,12 @@ from .import models
 # -------------------------  ADMIN SIDE ----------------------------- #
 
 from django.http import JsonResponse
-from django.db.models import Count,Avg
-from django.db.models.functions import ExtractMonth
+from django.db.models import Count, Avg, Sum, F, Q, Case, When, Value, IntegerField, FloatField
+from django.db.models.functions import ExtractMonth, ExtractYear, TruncMonth, TruncDate
 from .models import Booking  # Import your Booking model
 from django.views.decorators.http import require_GET
+from datetime import timedelta, datetime
+from django.utils import timezone
 
 @require_GET
 def monthly_bookings(request, year):
@@ -70,6 +72,134 @@ def district_bookings(request):
     values = [item['count'] for item in district_data]
     
     return JsonResponse({'labels': labels, 'values': values})
+
+@require_GET
+def service_category_performance(request):
+    # Get bookings by service type
+    service_data = (
+        Booking.objects.values('service_type')
+        .annotate(count=Count('id'))
+        .order_by('-count')
+    )
+    
+    labels = [item['service_type'] for item in service_data]
+    values = [item['count'] for item in service_data]
+    
+    return JsonResponse({'labels': labels, 'values': values})
+
+@require_GET
+def customer_retention_analysis(request):
+    # Get data for the last 12 months
+    end_date = timezone.now().date()
+    start_date = end_date - timedelta(days=365)
+    
+    # Prepare monthly data
+    months = []
+    new_customers = []
+    returning_customers = []
+    
+    # Get all bookings in the last year
+    bookings = Booking.objects.filter(
+        appointment_date__gte=start_date,
+        appointment_date__lte=end_date
+    ).select_related('customer_id')
+    
+    # Group bookings by month
+    bookings_by_month = {}
+    for i in range(12):
+        month_date = end_date - timedelta(days=30 * i)
+        month_key = month_date.strftime('%Y-%m')
+        months.insert(0, month_date.strftime('%b %Y'))
+        bookings_by_month[month_key] = {'new': 0, 'returning': 0}
+    
+    # Determine new vs returning customers
+    customer_first_booking = {}
+    for booking in bookings.order_by('appointment_date'):
+        booking_month = booking.appointment_date.strftime('%Y-%m')
+        customer_id = booking.customer_id.user_id
+        
+        if customer_id not in customer_first_booking:
+            # This is a new customer
+            customer_first_booking[customer_id] = booking_month
+            if booking_month in bookings_by_month:
+                bookings_by_month[booking_month]['new'] += 1
+        else:
+            # This is a returning customer
+            if booking_month in bookings_by_month:
+                bookings_by_month[booking_month]['returning'] += 1
+    
+    # Prepare data for chart
+    for month_key in sorted(bookings_by_month.keys()):
+        new_customers.append(bookings_by_month[month_key]['new'])
+        returning_customers.append(bookings_by_month[month_key]['returning'])
+    
+    return JsonResponse({
+        'labels': months,
+        'new_customers': new_customers,
+        'returning_customers': returning_customers
+    })
+
+@require_GET
+def revenue_analysis(request):
+    # Get revenue data by service type
+    # Assuming you have a payment amount field in your Booking or Payments model
+    revenue_data = (
+        Payments.objects.values('booking_id__service_type')
+        .filter(status='completed')
+        .annotate(total=Sum('amount'))
+        .order_by('-total')
+    )
+    
+    labels = [item['booking_id__service_type'] for item in revenue_data]
+    values = [float(item['total']) for item in revenue_data]
+    
+    return JsonResponse({'labels': labels, 'values': values})
+
+@require_GET
+def geospatial_booking_data(request):
+    # Get booking data by district with coordinates
+    # This is a simplified version - in a real implementation, you would need to have
+    # actual coordinates for each district or use a geocoding service
+    
+    district_data = (
+        Booking.objects.select_related('customer_id')
+        .values('customer_id__district')
+        .annotate(count=Count('id'))
+        .filter(customer_id__district__isnull=False)
+        .order_by('-count')
+    )
+    
+    # Sample coordinates for Kerala districts - replace with actual coordinates
+    district_coordinates = {
+        'Thiruvananthapuram': {'lat': 8.5241, 'lng': 76.9366},
+        'Kollam': {'lat': 8.8932, 'lng': 76.6141},
+        'Pathanamthitta': {'lat': 9.2648, 'lng': 76.7870},
+        'Alappuzha': {'lat': 9.4981, 'lng': 76.3388},
+        'Kottayam': {'lat': 9.5916, 'lng': 76.5222},
+        'Idukki': {'lat': 9.9189, 'lng': 77.1025},
+        'Ernakulam': {'lat': 9.9816, 'lng': 76.2999},
+        'Thrissur': {'lat': 10.5276, 'lng': 76.2144},
+        'Palakkad': {'lat': 10.7867, 'lng': 76.6548},
+        'Malappuram': {'lat': 11.0510, 'lng': 76.0711},
+        'Kozhikode': {'lat': 11.2588, 'lng': 75.7804},
+        'Wayanad': {'lat': 11.6854, 'lng': 76.1320},
+        'Kannur': {'lat': 11.8745, 'lng': 75.3704},
+        'Kasaragod': {'lat': 12.4996, 'lng': 74.9869}
+    }
+    
+    # Prepare data for the heatmap
+    heatmap_data = []
+    for item in district_data:
+        district = item['customer_id__district']
+        if district in district_coordinates:
+            heatmap_data.append({
+                'district': district,
+                'count': item['count'],
+                'lat': district_coordinates[district]['lat'],
+                'lng': district_coordinates[district]['lng']
+            })
+    
+    return JsonResponse({'data': heatmap_data})
 
 
 from django.db.models import Count, Max
@@ -120,6 +250,15 @@ def DashboardPage(request):
                 'worker': rating_obj.worker,
                 'average_rating': worker['average_rating']
             })
+    
+    # Get service type distribution
+    service_types = Booking.objects.values('service_type').annotate(count=Count('id')).order_by('-count')
+    
+    # Calculate revenue by service type if Payments model is available
+    try:
+        revenue_by_service = Payments.objects.values('booking_id__service_type').filter(status='completed').annotate(total=Sum('amount')).order_by('-total')
+    except:
+        revenue_by_service = []
 
     context = {
         'total_users': total_users,
@@ -128,7 +267,9 @@ def DashboardPage(request):
         'total_bookings': total_bookings,
         'recent_messages': recent_messages,
         'monthly_bookings': booking_counts,
-        'top_rated_workers': top_rated_workers_full  # Add this line
+        'top_rated_workers': top_rated_workers_full,
+        'service_types': service_types,
+        'revenue_by_service': revenue_by_service
     }
     
     return render(request, 'admin_temp/dashboard.html', context)
