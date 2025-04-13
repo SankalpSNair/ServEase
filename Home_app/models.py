@@ -223,12 +223,14 @@ class WorkerVerification(models.Model):
 class WorkerRating(models.Model):
     customer = models.ForeignKey(Users, on_delete=models.CASCADE, related_name='ratings_given')
     worker = models.ForeignKey(Users, on_delete=models.CASCADE, related_name='ratings_received')
+    worker_type = models.CharField(max_length=50, blank=True, null=True)
     rating = models.PositiveIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_displayed = models.BooleanField(default=True)  # For admin to control which feedbacks to display
 
     class Meta:
         unique_together = ('customer', 'worker')

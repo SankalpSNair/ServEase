@@ -22,6 +22,7 @@ urlpatterns = [
     path('api/service-category-performance/', views.service_category_performance, name='service_category_performance'),
     path('api/customer-retention-analysis/', views.customer_retention_analysis, name='customer_retention_analysis'),
     path('api/revenue-analysis/', views.revenue_analysis, name='revenue_analysis'),
+    path('api/revenue-analysis-by-booking/', views.revenue_analysis_by_booking, name='revenue_analysis_by_booking'),
     path('api/geospatial-booking-data/', views.geospatial_booking_data, name='geospatial_booking_data'),
     path('dashboard/', views.DashboardPage, name='dashboard'),
     path('monthly_bookings/<int:year>/', views.monthly_bookings, name='monthly_bookings'),

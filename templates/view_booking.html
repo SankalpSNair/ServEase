@@ -441,6 +441,16 @@ body {
         .star-rating .fas.fa-star.active {
             color: #ffc107;
         }
+        .feedback-option {
+            border-color: #9064E9;
+            color: #9064E9;
+            transition: all 0.3s ease;
+        }
+        .feedback-option:hover, .feedback-option.active {
+            background-color: #9064E9;
+            color: white;
+            border-color: #9064E9;
+        }
     </style>
     </head>
     <header class="header-area header-sticky">
@@ -629,9 +639,9 @@ body {
     <div class="modal fade" id="ratingModal" tabindex="-1" role="dialog" aria-labelledby="ratingModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="ratingModalLabel">Rate Our Service</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <div class="modal-header" style="background-color: #9064E9; color: white;">
+                    <h5 class="modal-title" id="ratingModalLabel">Rate Our Service & Leave Feedback</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color: white;">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
@@ -640,8 +650,10 @@ body {
                         <input type="hidden" id="bookingId" name="booking_id">
                         <input type="hidden" id="workerId" name="worker_id">
                         <input type="hidden" id="customerId" name="customer_id">
+                        <input type="hidden" id="workerType" name="worker_type">
+                        
                         <div class="form-group">
-                            <label for="rating">Rating:</label>
+                            <label for="rating"><strong>Rating:</strong></label>
                             <div class="star-rating">
                                 <i class="fas fa-star" data-rating="1"></i>
                                 <i class="fas fa-star" data-rating="2"></i>
@@ -651,15 +663,43 @@ body {
                             </div>
                             <input type="hidden" id="rating" name="rating" required>
                         </div>
-                        <div class="form-group">
-                            <label for="comment">Comment:</label>
-                            <textarea class="form-control" id="comment" name="comment" rows="3"></textarea>
+                        
+                        <div class="form-group mt-4">
+                            <label><strong>Quick Feedback:</strong></label>
+                            <div class="feedback-options">
+                                <div class="row">
+                                    <div class="col-6 col-md-4 mb-2">
+                                        <button type="button" class="btn btn-outline-primary btn-sm feedback-option w-100" data-feedback="Excellent service!">Excellent service!</button>
+                                    </div>
+                                    <div class="col-6 col-md-4 mb-2">
+                                        <button type="button" class="btn btn-outline-primary btn-sm feedback-option w-100" data-feedback="Very professional">Very professional</button>
+                                    </div>
+                                    <div class="col-6 col-md-4 mb-2">
+                                        <button type="button" class="btn btn-outline-primary btn-sm feedback-option w-100" data-feedback="On time and efficient">On time & efficient</button>
+                                    </div>
+                                    <div class="col-6 col-md-4 mb-2">
+                                        <button type="button" class="btn btn-outline-primary btn-sm feedback-option w-100" data-feedback="Great value for money">Great value</button>
+                                    </div>
+                                    <div class="col-6 col-md-4 mb-2">
+                                        <button type="button" class="btn btn-outline-primary btn-sm feedback-option w-100" data-feedback="Friendly staff">Friendly staff</button>
+                                    </div>
+                                    <div class="col-6 col-md-4 mb-2">
+                                        <button type="button" class="btn btn-outline-primary btn-sm feedback-option w-100" data-feedback="Would recommend">Would recommend</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mt-3">
+                            <label for="comment"><strong>Your Feedback:</strong></label>
+                            <textarea class="form-control" id="comment" name="comment" rows="4" placeholder="Please share your experience with our service or select from the options above..." required></textarea>
+                            <small class="text-muted">Your feedback will be displayed on our admin dashboard to help us improve our services.</small>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="submitRating">Submit Rating</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="submitRating" style="background-color: #9064E9; border-color: #9064E9;">Submit Rating & Feedback</button>
                 </div>
             </div>
         </div>
@@ -889,10 +929,14 @@ body {
             var bookingId = $(this).data('booking-id');
             var workerId = $(this).data('worker-id');
             var customerId = $(this).data('customer-id');
-            console.log("Booking ID:", bookingId, "Worker ID:", workerId, "Customer ID:", customerId);
+            var workerType = $(this).closest('tr').find('td:first').text().trim(); // Get worker type from the first cell in the row
+            
+            console.log("Booking ID:", bookingId, "Worker ID:", workerId, "Customer ID:", customerId, "Worker Type:", workerType);
+            
             $('#bookingId').val(bookingId);
             $('#workerId').val(workerId);
             $('#customerId').val(customerId);
+            $('#workerType').val(workerType);
             $('#ratingModal').modal('show');
         });
 
@@ -902,6 +946,33 @@ body {
             $('#rating').val(rating);
             $('.star-rating .fa-star').removeClass('active');
             $(this).addClass('active').prevAll().addClass('active');
+        });
+        
+        // Quick feedback options
+        $('.feedback-option').on('click', function() {
+            var feedback = $(this).data('feedback');
+            
+            // Toggle active class on this button
+            $(this).toggleClass('active');
+            
+            // Get current comment text
+            var currentComment = $('#comment').val().trim();
+            
+            if ($(this).hasClass('active')) {
+                // If button is now active, add the feedback to the comment
+                if (currentComment) {
+                    // If there's already text, add the feedback with a separator
+                    if (!currentComment.includes(feedback)) {
+                        $('#comment').val(currentComment + '\n' + feedback);
+                    }
+                } else {
+                    // If comment is empty, just add the feedback
+                    $('#comment').val(feedback);
+                }
+            } else {
+                // If button is now inactive, remove the feedback from the comment
+                $('#comment').val(currentComment.replace(feedback, '').replace('\n\n', '\n').trim());
+            }
         });
 
         // Hover effect
@@ -928,8 +999,26 @@ body {
         // Modify the rating submission
         $('#submitRating').on('click', function() {
             var rating = $('#rating').val();
+            var comment = $('#comment').val();
+            
+            // Validate required fields
             if (!rating) {
-                alert('Please select a rating');
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Please select a rating',
+                    icon: 'error',
+                    confirmButtonColor: '#9064E9'
+                });
+                return;
+            }
+            
+            if (!comment) {
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Please enter your feedback or select a quick feedback option',
+                    icon: 'error',
+                    confirmButtonColor: '#9064E9'
+                });
                 return;
             }
 
@@ -937,11 +1026,15 @@ body {
                 booking_id: $('#bookingId').val(),
                 worker_id: $('#workerId').val(),
                 customer_id: $('#customerId').val(),
+                worker_type: $('#workerType').val(),
                 rating: rating,
-                comment: $('#comment').val()
+                comment: comment
             };
 
             console.log("Sending data:", formData);
+            
+            // Disable the submit button to prevent multiple submissions
+            $('#submitRating').prop('disabled', true).text('Submitting...');
 
             $.ajax({
                 url: '{% url "submit_rating" %}',
@@ -952,13 +1045,26 @@ body {
                 },
                 success: function(response) {
                     console.log("Success response:", response);
-                    alert('Rating submitted successfully!');
-                    $('#ratingModal').modal('hide');
-                    location.reload();
+                    Swal.fire({
+                        title: 'Thank You!',
+                        text: 'Your rating and feedback have been submitted successfully!',
+                        icon: 'success',
+                        confirmButtonColor: '#9064E9'
+                    }).then(() => {
+                        $('#ratingModal').modal('hide');
+                        location.reload();
+                    });
                 },
                 error: function(xhr, status, error) {
                     console.error("Error response:", xhr.responseText);
-                    alert('An error occurred while submitting the rating.');
+                    Swal.fire({
+                        title: 'Error!',
+                        text: 'An error occurred while submitting your rating and feedback.',
+                        icon: 'error',
+                        confirmButtonColor: '#9064E9'
+                    });
+                    // Re-enable the submit button
+                    $('#submitRating').prop('disabled', false).text('Submit Rating & Feedback');
                 }
             });
         });

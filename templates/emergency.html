@@ -160,7 +160,11 @@
             color: #333;
         }
     </style>
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY"></script>
+    <!-- We'll use Leaflet instead of Google Maps as it doesn't require an API key -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     </head>
     <header class="header-area header-sticky">
         <div class="container">
@@ -422,10 +426,18 @@
                 <input type="hidden" id="latitude" name="latitude">
                 <input type="hidden" id="longitude" name="longitude">
                 <div class="form-group">
-                    <input type="text" id="locationInput" class="location-input" placeholder="Enter your location" required>
+                    <div class="search-container">
+                        <input type="text" id="locationInput" class="location-input" placeholder="Enter your location" required>
+                        <button type="button" class="search-location-btn" onclick="searchLocation()">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
                     <a href="javascript:void(0)" class="use-current-location" onclick="getCurrentLocation()">
-                        Use Current Location
+                        <i class="fa fa-map-marker"></i> Use Current Location
                     </a>
+                </div>
+                <div class="form-group">
+                    <div id="map-container" style="height: 250px; width: 100%; border-radius: 8px; margin-bottom: 15px;"></div>
                 </div>
                 <div class="form-group">
                     <select id="additionalDetails" class="location-input" required>
@@ -538,6 +550,191 @@
             }
         };
 
+        // Initialize map variables
+        let map;
+        let marker;
+        let geocoder;
+        
+        // Initialize the map using Leaflet
+        function initMap() {
+            // Default location (center of India)
+            const defaultLocation = [20.5937, 78.9629];
+            
+            // Create the map
+            map = L.map('map-container').setView(defaultLocation, 5);
+            
+            // Add tile layer (OpenStreetMap)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            }).addTo(map);
+            
+            // Create a marker that can be moved
+            marker = L.marker(defaultLocation, {
+                draggable: true,
+                title: "Drag to set your location"
+            }).addTo(map);
+            
+            // Update coordinates when marker is dragged
+            marker.on('dragend', function() {
+                const position = marker.getLatLng();
+                document.getElementById('latitude').value = position.lat;
+                document.getElementById('longitude').value = position.lng;
+                updateLocationInput(position.lat, position.lng);
+                reverseGeocode(position.lat, position.lng);
+            });
+            
+            // Allow clicking on map to move marker
+            map.on('click', function(event) {
+                moveMarker([event.latlng.lat, event.latlng.lng]);
+            });
+            
+            // Add geocoder control for searching locations
+            geocoder = L.Control.geocoder({
+                defaultMarkGeocode: false
+            }).addTo(map);
+            
+            // Handle geocoder results
+            geocoder.on('markgeocode', function(event) {
+                const result = event.geocode;
+                moveMarker([result.center.lat, result.center.lng]);
+                document.getElementById('locationInput').value = result.name;
+                map.fitBounds(result.bbox);
+            });
+            
+            // Setup search functionality for location input
+            const locationInput = document.getElementById('locationInput');
+            
+            // Add event listener for Enter key
+            locationInput.addEventListener('keypress', function(event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    searchLocation();
+                }
+            });
+            
+            // Define the searchLocation function globally
+            window.searchLocation = function() {
+                const address = locationInput.value;
+                if (address && address.trim() !== '') {
+                    // Show loading indicator
+                    const searchBtn = document.querySelector('.search-location-btn');
+                    searchBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+                    
+                    // Try to geocode the entered address
+                    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=5`)
+                        .then(response => response.json())
+                        .then(data => {
+                            // Reset search button
+                            searchBtn.innerHTML = '<i class="fa fa-search"></i>';
+                            
+                            if (data && data.length > 0) {
+                                // If multiple results, show them in a dropdown
+                                if (data.length > 1) {
+                                    showSearchResults(data);
+                                } else {
+                                    // If only one result, use it directly
+                                    const result = data[0];
+                                    moveMarker([parseFloat(result.lat), parseFloat(result.lon)]);
+                                    map.setView([parseFloat(result.lat), parseFloat(result.lon)], 15);
+                                    locationInput.value = result.display_name;
+                                }
+                            } else {
+                                alert('No locations found. Please try a different search term.');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error geocoding address:', error);
+                            const searchBtn = document.querySelector('.search-location-btn');
+                            searchBtn.innerHTML = '<i class="fa fa-search"></i>';
+                            alert('Error searching for location. Please try again.');
+                        });
+                }
+            };
+            
+            // Function to display search results
+            function showSearchResults(results) {
+                // Remove any existing results container
+                const existingResults = document.getElementById('search-results');
+                if (existingResults) {
+                    existingResults.remove();
+                }
+                
+                // Create results container
+                const resultsContainer = document.createElement('div');
+                resultsContainer.id = 'search-results';
+                resultsContainer.className = 'search-results';
+                
+                // Add results to container
+                results.forEach(result => {
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'search-result-item';
+                    resultItem.textContent = result.display_name;
+                    resultItem.addEventListener('click', function() {
+                        // Use this result
+                        moveMarker([parseFloat(result.lat), parseFloat(result.lon)]);
+                        map.setView([parseFloat(result.lat), parseFloat(result.lon)], 15);
+                        locationInput.value = result.display_name;
+                        resultsContainer.remove();
+                    });
+                    resultsContainer.appendChild(resultItem);
+                });
+                
+                // Add close button
+                const closeButton = document.createElement('div');
+                closeButton.className = 'search-results-close';
+                closeButton.innerHTML = '&times;';
+                closeButton.addEventListener('click', function() {
+                    resultsContainer.remove();
+                });
+                resultsContainer.appendChild(closeButton);
+                
+                // Add to DOM after the search container
+                const searchContainer = document.querySelector('.search-container');
+                searchContainer.parentNode.insertBefore(resultsContainer, searchContainer.nextSibling);
+                
+                // Close results when clicking outside
+                document.addEventListener('click', function closeResults(e) {
+                    if (!resultsContainer.contains(e.target) && 
+                        !searchContainer.contains(e.target)) {
+                        resultsContainer.remove();
+                        document.removeEventListener('click', closeResults);
+                    }
+                });
+            }
+            
+            // Invalidate map size after modal is fully visible
+            setTimeout(() => map.invalidateSize(), 400);
+        }
+        
+        // Function to move marker and update form fields
+        function moveMarker(location) {
+            marker.setLatLng(location);
+            document.getElementById('latitude').value = location[0];
+            document.getElementById('longitude').value = location[1];
+            updateLocationInput(location[0], location[1]);
+            reverseGeocode(location[0], location[1]);
+        }
+        
+        // Function to get address from coordinates
+        function reverseGeocode(lat, lng) {
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.display_name) {
+                        document.getElementById('locationInput').value = data.display_name;
+                    }
+                })
+                .catch(error => console.error('Error reverse geocoding:', error));
+        }
+        
+        // Update location input with coordinates
+        function updateLocationInput(lat, lng) {
+            if (!document.getElementById('locationInput').value) {
+                document.getElementById('locationInput').value = `${parseFloat(lat).toFixed(6)}, ${parseFloat(lng).toFixed(6)}`;
+            }
+        }
+        
         // Show modal function with dynamic options
         window.showBookingModal = function(serviceType, workerPhone) {
             var modal = document.getElementById("bookingModal");
@@ -566,6 +763,11 @@
             });
             
             modal.style.display = "flex";
+            
+            // Initialize map after modal is shown
+            setTimeout(function() {
+                initMap();
+            }, 300);
         };
 
         // Close modal when clicking the close button
@@ -609,6 +811,15 @@
                         // Display coordinates in the location input
                         locationInput.value = `${latitude}, ${longitude}`;
                         console.log("Location found:", latitude, longitude);
+
+                        // Update map with current location
+                        if (map && marker) {
+                            map.setView([latitude, longitude], 15);
+                            marker.setLatLng([latitude, longitude]);
+                            
+                            // Try to get address from coordinates
+                            reverseGeocode(latitude, longitude);
+                        }
 
                         // Reset button state
                         locationButton.disabled = false;
@@ -701,8 +912,46 @@
             padding: 30px;
             border-radius: 15px;
             width: 90%;
-            max-width: 500px;
+            max-width: 550px;
             position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .search-results {
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            width: calc(100% - 60px);
+            z-index: 1001;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .search-result-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .search-result-item:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+        
+        .search-results-close {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            font-size: 20px;
+            cursor: pointer;
+            color: #999;
         }
 
         .close-modal {
@@ -717,12 +966,26 @@
             margin-bottom: 20px;
         }
 
+        .search-container {
+            position: relative;
+            display: flex;
+            margin: 10px 0;
+        }
+        
         .location-input {
             width: 100%;
             padding: 12px;
-            margin: 10px 0;
             border: 1px solid #ddd;
-            border-radius: 8px;
+            border-radius: 8px 0 0 8px;
+        }
+        
+        .search-location-btn {
+            background: #9064E9;
+            color: white;
+            border: none;
+            border-radius: 0 8px 8px 0;
+            padding: 0 15px;
+            cursor: pointer;
         }
 
         .use-current-location {

@@ -8,73 +8,159 @@
     <title>Sign Up</title>
 
     <!-- Font Icon -->
-    <link rel="stylesheet" href="{% static 'fonts/material-icon/css/material-design-iconic-font.min.css'%}">
-    <link rel="stylesheet" href="{% static 'css/style.css'%}">
     <style>
-        .main {
-        background: #f8f8f8;
-        padding: 50px 0;
+        :root {
+            --primary-gradient: linear-gradient(45deg, #6b5ce7, #a178df);
+            --secondary-gradient: linear-gradient(45deg, #ff7979, #ffbe76);
+            --button-gradient: linear-gradient(45deg, #a178df, #6b5ce7);
         }
         
-        .header {
-            background-color: #f8f9fa;
-            /* padding: 10px;    */
-            padding-left: 10px;
-            text-align: left;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-        html, body {
-            /* overflow: scroll; */
-            height: 100%;
+        body {
             margin: 0;
             padding: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--primary-gradient);
+            height: 100vh;
+            overflow: hidden;
         }
-        .error {
-            color: red;
-            font-size: 12px;
 
-            margin-top: 5px;
+        .main {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
         }
+
+        .signup {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .container {
+            display: flex;
+            background: transparent;
+            margin: 0 20px;
+        }
+
+        .signup-content {
+            display: flex;
+            width: 100%;
+            background: transparent;
+        }
+
+        .welcome-section {
+            flex: 1;
+            padding: 60px;
+            color: white;
+            position: relative;
+        }
+
+        .signup-form {
+            flex: 1;
+            background: white;
+            padding: 60px;
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-title {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 40px;
+            text-align: left;
+        }
+
         .form-group {
-            margin-bottom: 20px; 
-            font-size: 20px;
+            margin-bottom: 25px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            background: #f8f9fa;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #6b5ce7;
+            background: white;
+        }
+
+        .form-submit {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            background: var(--button-gradient);
+            color: black;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .form-submit:hover {
+            background: rgba(77, 62, 207, 0.521);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(165, 191, 207, 0.3);
+        }
+
+        .form-submit:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(0, 65, 106, 0.3);
+        }
+
+        .error {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .signup-image {
+            display: none;
+        }
+
+        .signup-image-link {
+            color: #6b5ce7;
+            text-decoration: none;
+            font-size: 14px;
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .signup-image-link:hover {
+            color: #4d3ecf;
         }
         
-        label{
-            font-size:20px;
-            padding-bottom: 18px;
+        .register-link {
+            margin-top: 20px;
+            text-align: center;
         }
-        input{
-            padding-left: 0px;
-            font-size: 15px;
-            
-        }
-        .signup-form{
-            width:auto;
-            height:auto;
-        }
-        .signup-content {
-        padding: 13px 0;
-        }
-        .form-title{
-            margin-bottom: 17px;
-            margin-top: 10px;
-        }
-        .form-submit{
-            margin-bottom:10px;
-        }
-        .signup-image {
-        margin-top: 140px;
+
+        @media (max-width: 768px) {
+            .welcome-section {
+                display: none;
+            }
+            .signup-form {
+                width: 100%;
+            }
+            .container {
+                margin: 20px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h2>ServEase</h2>
-    </div>
 
     <div class="main">
 
@@ -82,49 +168,43 @@
         <section class="signup">
             <div class="container">
                 <div class="signup-content">
+                    <div class="welcome-section">
+                        <h2>Join ServEase Today</h2>
+                        <p>Create your account to access a world of seamless service management and connect with professionals.</p>
+                    </div>
                     <div class="signup-form">
-                        <h2 class="form-title">Sign Up</h2>
+                        <h2 class="form-title">SIGN UP</h2>
                         <form method="POST" class="register-form" id="register-form" action="" onsubmit="return validateForm()">
 
                             {% csrf_token %}
 
                             <div class="form-group">
-                                <!-- <label for="fname">First Name</label> -->
-                                FirstName<input type="text" name="fname" id="fname" placeholder="type here..."/>
+                                <input type="text" name="fname" id="fname" placeholder="First Name" />
                                 <span id="fname-error" class="error"></span>
                             </div>
                             <div class="form-group">
-                                <!-- <label for="lname"><i class="zmdi zmdi-account material-icons-name"></i></label> -->
-                                LastName<input type="text" name="lname" id="lname" placeholder="type here..."/>
+                                <input type="text" name="lname" id="lname" placeholder="Last Name" />
                                 <span id="lname-error" class="error"></span>
                             </div>
                             <div class="form-group">
-                                <!-- <label for="email"><i class="zmdi zmdi-email"></i></label> -->
-                                Email<input type="email" name="email" id="email" placeholder="type here..."/>
+                                <input type="email" name="email" id="email" placeholder="Email Address" />
                                 <span id="email-error" class="error"></span>
                             </div>
                             <div class="form-group">
-                                <!-- <label for="password"><i class="zmdi zmdi-lock"></i></label> -->
-                                Password<input type="password" name="password" id="password" placeholder="type here..."/>
+                                <input type="password" name="password" id="password" placeholder="Password" />
                                 <span id="password-error" class="error"></span>
                             </div>
                             <div class="form-group">
-                                <!-- <label for="re_pass"><i class="zmdi zmdi-lock-outline"></i></label> -->
-                                Re-enter Password<input type="password" name="re_pass" id="re_pass" placeholder="type here..."/>
+                                <input type="password" name="re_pass" id="re_pass" placeholder="Confirm Password" />
                                 <span id="re_pass-error" class="error"></span>
                             </div>
-                            <div class="form-group">
-                                <input type="checkbox" name="agree-term" id="agree-term" class="agree-term" />
-                                <label for="agree-term" class="label-agree-term"><span><span></span></span>I agree all statements in <a href="#" class="term-service">Terms of service</a></label>
-                            </div>
                             <div class="form-group form-button">
-                                <input type="submit" name="signup" id="signup" class="form-submit" value="Register"/>
+                                <input type="submit" name="signup" id="signup" class="form-submit" value="CREATE ACCOUNT" />
                             </div>
                         </form>
-                    </div>
-                    <div class="signup-image">
-                        <figure><img src="{% static 'images/signup-image.jpg'%}" alt="sign up image"></figure>
-                        <a href="{% url 'login' %}" class="signup-image-link" style="text-decoration: none; font-size: 16px;"><strong>I am already member</strong></a>
+                        <div class="register-link">
+                            <a href="{% url 'login' %}" class="signup-image-link">Already have an account? Login</a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -134,7 +214,34 @@
 
     <!-- JS -->
     <script src="{% static 'vendor/jquery/jquery.min.js' %}"></script>
-<script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Handle Django messages with SweetAlert -->
+    {% if messages %}
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Using JavaScript variables to store Django template values
+                var messages = [
+                    {% for message in messages %}
+                        {
+                            icon: "{{ message.tags|default:'info' }}",
+                            title: "{{ message|escapejs }}"
+                        }{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ];
+                
+                // Display each message
+                messages.forEach(function(msg) {
+                    Swal.fire({
+                        icon: msg.icon,
+                        title: msg.title,
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+                });
+            });
+        </script>
+    {% endif %}
+    <script>
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {

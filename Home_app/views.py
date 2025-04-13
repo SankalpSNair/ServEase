@@ -156,6 +156,89 @@ def revenue_analysis(request):
     return JsonResponse({'labels': labels, 'values': values})
 
 @require_GET
+def revenue_analysis_by_booking(request):
+    # Get the time period from the request (default to monthly)
+    period = request.GET.get('period', 'monthly')
+    
+    # Get data for the last 12 months by default
+    end_date = timezone.now().date()
+    start_date = end_date - timedelta(days=365)
+    
+    # Base query to get all bookings with payment amounts
+    bookings = Booking.objects.filter(
+        appointment_date__gte=start_date,
+        appointment_date__lte=end_date,
+        pay_amount__isnull=False  # Ensure there's a payment amount
+    ).exclude(pay_amount=0)  # Exclude zero payments
+    
+    # Prepare the aggregation based on the requested period
+    if period == 'monthly':
+        # Group by month
+        bookings_by_period = bookings.annotate(
+            period=TruncMonth('appointment_date')
+        ).values('period').annotate(
+            total=Sum('pay_amount')
+        ).order_by('period')
+        
+        # Format for display
+        labels = [item['period'].strftime('%b %Y') for item in bookings_by_period]
+    
+    elif period == 'quarterly':
+        # Group by quarter
+        bookings_by_period = []
+        for quarter in range(1, 5):
+            quarter_start_month = (quarter - 1) * 3 + 1
+            quarter_end_month = quarter * 3
+            
+            # Get the year for current quarter
+            current_year = timezone.now().year
+            
+            # Calculate total for this quarter
+            quarter_total = bookings.filter(
+                appointment_date__year=current_year,
+                appointment_date__month__gte=quarter_start_month,
+                appointment_date__month__lte=quarter_end_month
+            ).aggregate(total=Sum('pay_amount'))['total'] or 0
+            
+            bookings_by_period.append({
+                'period': f'Q{quarter} {current_year}',
+                'total': quarter_total
+            })
+        
+        # Format for display
+        labels = [item['period'] for item in bookings_by_period]
+        
+    elif period == 'yearly':
+        # Group by year
+        bookings_by_period = bookings.annotate(
+            year=ExtractYear('appointment_date')
+        ).values('year').annotate(
+            total=Sum('pay_amount')
+        ).order_by('year')
+        
+        # Format for display
+        labels = [str(item['year']) for item in bookings_by_period]
+    
+    # Extract the revenue values
+    if period == 'quarterly':
+        values = [float(item['total']) for item in bookings_by_period]
+    else:
+        values = [float(item['total']) for item in bookings_by_period]
+    
+    # Calculate cumulative values
+    cumulative = []
+    running_total = 0
+    for val in values:
+        running_total += val
+        cumulative.append(running_total)
+    
+    return JsonResponse({
+        'labels': labels, 
+        'values': values,
+        'cumulative': cumulative
+    })
+
+@require_GET
 def geospatial_booking_data(request):
     # Get booking data by district with coordinates
     # This is a simplified version - in a real implementation, you would need to have
@@ -259,6 +342,14 @@ def DashboardPage(request):
         revenue_by_service = Payments.objects.values('booking_id__service_type').filter(status='completed').annotate(total=Sum('amount')).order_by('-total')
     except:
         revenue_by_service = []
+        
+    # Fetch latest feedbacks for the dashboard
+    latest_feedbacks = WorkerRating.objects.filter(
+        is_displayed=True,
+        comment__isnull=False
+    ).exclude(
+        comment=''
+    ).select_related('customer', 'worker').order_by('-created_at')[:5]
 
     context = {
         'total_users': total_users,
@@ -269,7 +360,8 @@ def DashboardPage(request):
         'monthly_bookings': booking_counts,
         'top_rated_workers': top_rated_workers_full,
         'service_types': service_types,
-        'revenue_by_service': revenue_by_service
+        'revenue_by_service': revenue_by_service,
+        'latest_feedbacks': latest_feedbacks
     }
     
     return render(request, 'admin_temp/dashboard.html', context)
@@ -1933,10 +2025,12 @@ def submit_rating(request):
     logger.debug(f"Received POST data: {request.POST}")
     worker_id = request.POST.get('worker_id')
     customer_id = request.POST.get('customer_id')
+    worker_type = request.POST.get('worker_type')
     rating_value = request.POST.get('rating')
     comment = request.POST.get('comment')
 
-    logger.debug(f"Parsed data: worker_id={worker_id}, customer_id={customer_id}, rating={rating_value}, comment={comment}")
+    logger.debug(f"Parsed data: worker_id={worker_id}, customer_id={customer_id}, worker_type={worker_type}, "
+                f"rating={rating_value}, comment={comment}")
 
     if not worker_id or not customer_id:
         logger.error(f"Worker ID or Customer ID is empty or None. worker_id: {worker_id}, customer_id: {customer_id}")
@@ -1946,16 +2040,21 @@ def submit_rating(request):
         worker = Users.objects.get(user_id=worker_id)
         customer = Users.objects.get(user_id=customer_id)
         logger.debug(f"Found worker: {worker}, customer: {customer}")
+        
+        # Update or create the rating with the new fields
         rating, created = WorkerRating.objects.update_or_create(
             customer=customer,
             worker=worker,
             defaults={
+                'worker_type': worker_type,
                 'rating': rating_value,
-                'comment': comment
+                'comment': comment,
+                'is_displayed': True  # Default to displaying the feedback
             }
         )
-        logger.info(f"Rating {'created' if created else 'updated'} successfully: {rating}")
-        return JsonResponse({'success': True, 'message': 'Rating submitted successfully'})
+        
+        logger.info(f"Rating and feedback {'created' if created else 'updated'} successfully: {rating}")
+        return JsonResponse({'success': True, 'message': 'Rating and feedback submitted successfully'})
     except Users.DoesNotExist as e:
         logger.error(f"User does not exist: {str(e)}")
         return JsonResponse({'success': False, 'message': str(e)}, status=400)

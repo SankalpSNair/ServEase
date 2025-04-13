@@ -329,8 +329,9 @@ input, optgroup, select, textarea {
                                     <input type="date" id="appointment_date" name="appointment_date" class="form-control" required min="{{ today_date }}">
                                 </div>
                                 <div class="form-group">
-                                    <label for="appointment_time">Appointment Time:</label>
-                                    <input type="time" id="appointment_time" name="appointment_time" class="form-control" required>
+                                     <label for="appointment_start_time">Appointment Time:</label>
+                                     <input type="time" id="appointment_start_time" name="appointment_start_time" class="form-control" required
+                                            min="06:00" max="18:00" step="1800">
                                 </div>
                                 <div class="form-group">
                                     <label for="service_type">Service Type:</label>
@@ -354,13 +355,8 @@ input, optgroup, select, textarea {
                                     <label for="address">Address:</label>
                                     <textarea id="address" name="address" rows="3" class="form-control" required></textarea>
                                 </div>
-                                <div class="form-group full-width">
-                                    <label for="hours_booked">Number of Hours:</label>
-                                    <input type="number" id="hours_booked" name="hours_booked" min="1" max="8" value="1" class="form-control" required>
-                                </div>
                                 <div class="form-group full-width text-center">
-                                    <p>Hourly Rate: ₹{{ hourly_rate }}</p>
-                                    <p>Estimated Total: ₹<span id="estimated_total">{{ hourly_rate }}</span></p>
+                                    <p>Booking Charge: ₹59</p>
                                 </div>
                             </div>
                             <div class="text-center mt-4">
@@ -406,37 +402,14 @@ input, optgroup, select, textarea {
     <!-- Global Init -->
     <script src="{% static 'assets/js/custom.js' %}"></script>
     <script>
-        // JavaScript to enforce time constraints
+    
+        // Form validation if needed in the future
         document.querySelector('form').addEventListener('submit', function (e) {
-            var timeInput = document.getElementById('appointment_time');
-            var timeValue = timeInput.value;
-    
-            if (timeValue) {
-                var timeParts = timeValue.split(':');
-                var hours = parseInt(timeParts[0], 10);
-    
-                if (hours < 6 || hours >= 18) {
-                    e.preventDefault(); // Prevent form submission
-                    alert('The appointment time must be between 06:00 and 18:00.');
-                    timeInput.focus();
-                }
-            }
+            // Basic validation can be added here if needed
         });
-    
-        // Set the minimum date to today and the maximum date to one and a half years from today
-        var today = new Date();
-        var maxDate = new Date();
-        maxDate.setFullYear(today.getFullYear(), today.getMonth() + 18);
-    
-        document.getElementById('appointment_date').setAttribute('min', today.toISOString().split('T')[0]);
-        document.getElementById('appointment_date').setAttribute('max', maxDate.toISOString().split('T')[0]);
-
-        document.getElementById('hours_booked').addEventListener('input', function() {
-            var hours = this.value;
-            var rate = {{ hourly_rate }};
-            var total = (hours * rate).toFixed(2);
-            document.getElementById('estimated_total').textContent = total;
-        });
+    </script>
+    <script>
+        // No calculation needed as we now have a fixed booking charge
     </script>
     <!-- For profile -->
   </body>

@@ -289,11 +289,28 @@
                             </div>
                             <div class="col-12 col-xl-6">
                                 <div class="card">
-                                    <div class="card-header">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
                                         <h4>Revenue Analysis</h4>
+                                        <div class="btn-group btn-group-sm" role="group" aria-label="Revenue Time Period">
+                                            <button type="button" class="btn btn-outline-primary active" data-period="monthly">Monthly</button>
+                                            <button type="button" class="btn btn-outline-primary" data-period="quarterly">Quarterly</button>
+                                            <button type="button" class="btn btn-outline-primary" data-period="yearly">Yearly</button>
+                                        </div>
                                     </div>
                                     <div class="card-body">
                                         <canvas id="revenueAnalysisChart"></canvas>
+                                    </div>
+                                    <div class="card-footer bg-white">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="text-muted">Total Revenue:</span>
+                                                <span class="fw-bold ms-2" id="totalRevenue">₹0</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-muted">Average Per Month:</span>
+                                                <span class="fw-bold ms-2" id="avgRevenue">₹0</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -338,7 +355,7 @@
                         </div>
                         
                         <!-- Recent Messages with Enhanced Design -->
-                        <div class="card shadow-sm border-0 mt-4">
+                        <!-- <div class="card shadow-sm border-0 mt-4">
                             <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #f8f9fa;">
                                 <h4 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Recent Messages</h4>
                                 <span class="badge bg-primary rounded-pill">{{ recent_messages|length }}</span>
@@ -372,54 +389,58 @@
                                     </a>
                                 </div>
                             </div>
-                        </div>
+                        </div> -->
                         
                         <!-- Latest Feedbacks with Enhanced Design -->
                         <div class="card shadow-sm border-0 mt-4">
                             <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #f8f9fa;">
                                 <h4 class="mb-0"><i class="bi bi-star me-2"></i>Latest Feedbacks</h4>
-                                <a href="#" class="text-primary small">View All</a>
+                                <span class="badge bg-primary rounded-pill">{{ latest_feedbacks|length }}</span>
                             </div>
                             <div class="card-body p-0">
                                 <div class="list-group list-group-flush">
-                                    <div class="list-group-item border-0 py-3">
+                                    {% for feedback in latest_feedbacks %}
+                                    <div class="list-group-item border-0 py-3 {% if forloop.first %}border-start border-4 border-primary{% endif %}">
                                         <div class="d-flex align-items-center mb-2">
                                             <div class="avatar avatar-md me-3">
-                                                <img src="{% static 'adm_assets/images/faces/5.jpg' %}" style="border-radius: 50%; object-fit: cover;">
+                                                {% if feedback.customer.image %}
+                                                <img src="{{ feedback.customer.image.url }}" style="border-radius: 50%; object-fit: cover;">
+                                                {% else %}
+                                                <img src="{% static 'adm_assets/images/faces/1.jpg' %}" style="border-radius: 50%; object-fit: cover;">
+                                                {% endif %}
                                             </div>
                                             <div>
-                                                <h6 class="font-bold mb-0">User 1</h6>
+                                                <div class="d-flex align-items-center">
+                                                    <h6 class="font-bold mb-0">{{ feedback.customer.firstname }} {{ feedback.customer.lastname }}</h6>
+                                                    <span class="badge bg-info ms-2">Customer</span>
+                                                    {% if forloop.first %}
+                                                    <span class="badge bg-danger ms-2">New</span>
+                                                    {% endif %}
+                                                </div>
                                                 <div class="text-warning">
-                                                    <i class="bi bi-star-fill"></i>
-                                                    <i class="bi bi-star-fill"></i>
-                                                    <i class="bi bi-star-fill"></i>
-                                                    <i class="bi bi-star-fill"></i>
-                                                    <i class="bi bi-star"></i>
+                                                    {% for i in "12345"|make_list %}
+                                                        {% if forloop.counter <= feedback.rating %}
+                                                        <i class="bi bi-star-fill"></i>
+                                                        {% else %}
+                                                        <i class="bi bi-star"></i>
+                                                        {% endif %}
+                                                    {% endfor %}
                                                 </div>
                                             </div>
                                         </div>
-                                        <p class="mb-0 ps-5">"feedback 1"</p>
-                                        <small class="text-muted ps-5">2 days ago</small>
-                                    </div>
-                                    <div class="list-group-item border-0 py-3">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <div class="avatar avatar-md me-3">
-                                                <img src="{% static 'adm_assets/images/faces/2.jpg' %}" style="border-radius: 50%; object-fit: cover;">
-                                            </div>
-                                            <div>
-                                                <h6 class="font-bold mb-0">User 2</h6>
-                                                <div class="text-warning">
-                                                    <i class="bi bi-star-fill"></i>
-                                                    <i class="bi bi-star-fill"></i>
-                                                    <i class="bi bi-star-fill"></i>
-                                                    <i class="bi bi-star-half"></i>
-                                                    <i class="bi bi-star"></i>
-                                                </div>
-                                            </div>
+                                        <div class="mb-2 ps-5">
+                                            <strong>For:</strong> {{ feedback.worker.firstname }} {{ feedback.worker.lastname }}
+                                            <span class="badge bg-secondary ms-2">{{ feedback.worker_type }}</span>
                                         </div>
-                                        <p class="mb-0 ps-5">"feedback 2"</p>
-                                        <small class="text-muted ps-5">5 days ago</small>
+                                        <p class="mb-0 ps-5">"{{ feedback.comment }}"</p>
+                                        <small class="text-muted ps-5">{{ feedback.created_at|timesince }} ago</small>
                                     </div>
+                                    {% empty %}
+                                    <div class="text-center py-4">
+                                        <i class="bi bi-chat-square-text" style="font-size: 2rem; color: #ccc;"></i>
+                                        <p class="text-muted mt-2">No feedback available yet</p>
+                                    </div>
+                                    {% endfor %}
                                 </div>
                             </div>
                         </div>
@@ -778,16 +799,30 @@
                 revenueAnalysisChart.destroy();
             }
             revenueAnalysisChart = new Chart(revenueAnalysisCtx, {
-                type: 'bar',
+                type: 'line',
                 data: {
                     labels: data.labels,
-                    datasets: [{
-                        label: 'Revenue by Service Type',
-                        data: data.values,
-                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        borderWidth: 1
-                    }]
+                    datasets: [
+                        {
+                            label: 'Monthly Revenue',
+                            data: data.values,
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Cumulative Revenue',
+                            data: data.cumulative,
+                            backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1,
+                            yAxisID: 'y1'
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
@@ -796,31 +831,79 @@
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Revenue (₹)'
+                                text: 'Monthly Revenue (₹)'
+                            },
+                            grid: {
+                                display: true,
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y1: {
+                            beginAtZero: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Cumulative Revenue (₹)'
+                            },
+                            grid: {
+                                display: false
                             }
                         },
                         x: {
                             title: {
                                 display: true,
-                                text: 'Service Type'
+                                text: 'Month'
                             }
                         }
                     },
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Revenue by Service Type'
+                            text: 'Revenue Analysis (Last 12 Months)'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += new Intl.NumberFormat('en-IN', { 
+                                            style: 'currency', 
+                                            currency: 'INR',
+                                            maximumFractionDigits: 0
+                                        }).format(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
                         }
                     }
                 }
             });
         }
 
-        function fetchRevenueAnalysisData() {
-            fetch('/api/revenue-analysis/')
+        function fetchRevenueAnalysisData(period = 'monthly') {
+            fetch(`/api/revenue-analysis-by-booking/?period=${period}`)
                 .then(response => response.json())
                 .then(data => {
                     updateRevenueAnalysisChart(data);
+                    
+                    // Update summary information
+                    const totalRevenue = data.cumulative[data.cumulative.length - 1] || 0;
+                    const avgRevenue = data.values.length > 0 ? 
+                        data.values.reduce((sum, val) => sum + val, 0) / data.values.length : 0;
+                    
+                    // Format currency values
+                    const formatter = new Intl.NumberFormat('en-IN', { 
+                        style: 'currency', 
+                        currency: 'INR',
+                        maximumFractionDigits: 0
+                    });
+                    
+                    document.getElementById('totalRevenue').textContent = formatter.format(totalRevenue);
+                    document.getElementById('avgRevenue').textContent = formatter.format(avgRevenue);
                 })
                 .catch(error => {
                     console.error('Error fetching revenue analysis data:', error);
@@ -829,6 +912,22 @@
 
         // Initial load of revenue analysis chart
         fetchRevenueAnalysisData();
+        
+        // Handle revenue period button clicks
+        const revenuePeriodButtons = document.querySelectorAll('.btn-group[aria-label="Revenue Time Period"] .btn');
+        revenuePeriodButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove active class from all buttons
+                revenuePeriodButtons.forEach(btn => btn.classList.remove('active'));
+                
+                // Add active class to clicked button
+                this.classList.add('active');
+                
+                // Fetch data for the selected period
+                const period = this.getAttribute('data-period');
+                fetchRevenueAnalysisData(period);
+            });
+        });
 
         // Geospatial Booking Analysis Map
         var map = L.map('bookingMap').setView([10.1632, 76.6413], 7); // Center on Kerala
